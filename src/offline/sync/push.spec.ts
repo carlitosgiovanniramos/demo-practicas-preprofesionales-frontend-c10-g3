@@ -83,7 +83,7 @@ describe('pushOutbox', () => {
   })
 
   it('NO pierde las operaciones si la red cae: deben quedar en el outbox para reintento', async () => {
-    // arrange: dos horas en cola
+
     await db.hourLogs.put({
       id: 10,
       placementId: 1,
@@ -114,20 +114,14 @@ describe('pushOutbox', () => {
     })
     await enqueue({ entity: 'hourLog', op: 'create', payload: { id: 11, hours: 4 }, baseVersion: null })
 
-    // la red se cae durante el push. El mock prueba el orden: cuando /sync/push
-    // se llama, la cola DEBE seguir llena (fetch antes de bulkDelete).
     mockedApi.mockImplementationOnce(async () => {
       const remaining = await db.outbox.count()
-      expect(remaining).toBe(2) // orden correcto: fetch ocurre ANTES de bulkDelete
+      expect(remaining).toBe(2)
       throw new ApiError(0, 'red caída')
     })
 
-    // act: la red se cae durante el push
     await expect(pushOutbox()).rejects.toThrow()
 
-    // assert: las operaciones deben seguir en el outbox para poder reintentarse.
-    // Hoy falla: bulkDelete corrió antes que el fetch, así que la cola quedó
-    // vacía y las dos horas quedaron varadas en syncState 'queued' sin reintento.
     await expect(db.outbox.count()).resolves.toBe(2)
     await expect(db.hourLogs.get(10)).resolves.toMatchObject({ syncState: 'queued' })
     await expect(db.hourLogs.get(11)).resolves.toMatchObject({ syncState: 'queued' })
