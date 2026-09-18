@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { api } from '@/api/client'
+import { ApiError, api } from '@/api/client'
 import { db } from '@/offline/db'
 import { enqueue, pushOutbox } from './push'
 
@@ -80,5 +80,56 @@ describe('pushOutbox', () => {
     expect(result).toEqual({ applied: 1, failed: 0 })
     await expect(db.outbox.count()).resolves.toBe(0)
     await expect(db.hourLogs.get(10)).resolves.toMatchObject({ syncState: 'synced', version: 2 })
+  })
+
+  it('NO pierde las operaciones si la red cae: deben quedar en el outbox para reintento', async () => {
+    // arrange: dos horas en cola
+    await db.hourLogs.put({
+      id: 10,
+      placementId: 1,
+      date: '2026-04-01',
+      startTime: '08:00',
+      endTime: '12:00',
+      hours: 4,
+      activity: 'Soporte',
+      status: 'SUBMITTED',
+      version: 1,
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      syncState: 'local',
+    })
+    await enqueue({ entity: 'hourLog', op: 'create', payload: { id: 10, hours: 4 }, baseVersion: null })
+
+    await db.hourLogs.put({
+      id: 11,
+      placementId: 1,
+      date: '2026-04-01',
+      startTime: '13:00',
+      endTime: '17:00',
+      hours: 4,
+      activity: 'Soporte',
+      status: 'SUBMITTED',
+      version: 1,
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      syncState: 'local',
+    })
+    await enqueue({ entity: 'hourLog', op: 'create', payload: { id: 11, hours: 4 }, baseVersion: null })
+
+    // la red se cae durante el push. El mock prueba el orden: cuando /sync/push
+    // se llama, la cola DEBE seguir llena (fetch antes de bulkDelete).
+    mockedApi.mockImplementationOnce(async () => {
+      const remaining = await db.outbox.count()
+      expect(remaining).toBe(2) // orden correcto: fetch ocurre ANTES de bulkDelete
+      throw new ApiError(0, 'red caída')
+    })
+
+    // act: la red se cae durante el push
+    await expect(pushOutbox()).rejects.toThrow()
+
+    // assert: las operaciones deben seguir en el outbox para poder reintentarse.
+    // Hoy falla: bulkDelete corrió antes que el fetch, así que la cola quedó
+    // vacía y las dos horas quedaron varadas en syncState 'queued' sin reintento.
+    await expect(db.outbox.count()).resolves.toBe(2)
+    await expect(db.hourLogs.get(10)).resolves.toMatchObject({ syncState: 'queued' })
+    await expect(db.hourLogs.get(11)).resolves.toMatchObject({ syncState: 'queued' })
   })
 })
