@@ -3,7 +3,7 @@ import { db } from '@/offline/db'
 import { pullChanges } from './pull'
 import { pushOutbox } from './push'
 import { startSync, syncNow } from './scheduler'
-import { getStatus } from './status'
+import { getStatus, setStatus, subscribe } from './status'
 
 vi.mock('./pull', () => ({ pullChanges: vi.fn() }))
 vi.mock('./push', () => ({ pushOutbox: vi.fn() }))
@@ -17,6 +17,7 @@ beforeEach(async () => {
   localStorage.clear()
   mockedPull.mockReset()
   mockedPush.mockReset()
+  setStatus({ online: true, pending: 0, lastSyncAt: null, syncing: false })
 })
 
 describe('syncNow', () => {
@@ -51,12 +52,38 @@ describe('syncNow', () => {
     expect(mockedPush).toHaveBeenCalledTimes(1)
   })
 
+  it('emite una sola transición coherente al cerrar el sync con pendientes recalculados', async () => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockResolvedValue({ applied: 0, hasMore: false })
+    mockedPush.mockResolvedValue({ applied: 0, failed: 0 })
+    setStatus({ pending: 3 })
+
+    const seen: Array<Record<string, unknown>> = []
+    const capture = () => {
+      seen.push({ ...getStatus() })
+    }
+
+    const unsubscribeListener = subscribe(capture)
+
+    await syncNow()
+
+    unsubscribeListener()
+
+    expect(seen).toEqual([
+      expect.objectContaining({ syncing: true, pending: 3 }),
+      expect.objectContaining({ syncing: false, pending: 0, lastSyncAt: expect.any(String) }),
+    ])
+    expect(seen.some((state) => !state.syncing && Number(state.pending) !== 0)).toBe(false)
+    expect(getStatus().lastSyncAt).toBeTruthy()
+  })
+
   it('atrapa errores de red y deja de sincronizar sin propagar la excepción', async () => {
     localStorage.setItem('access_token', 'tok')
     mockedPull.mockRejectedValue(new Error('sin conexión'))
 
     await expect(syncNow()).resolves.toBeUndefined()
     expect(getStatus().syncing).toBe(false)
+    expect(getStatus().lastSyncAt).toBeNull()
   })
 })
 
