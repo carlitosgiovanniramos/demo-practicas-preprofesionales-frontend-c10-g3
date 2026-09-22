@@ -15,5 +15,8 @@ describe('SyncGutter', () => {
 
     rerender(<SyncGutter state="failed" />)
     expect(screen.getByRole('img', { name: /rechazado/i })).toBeInTheDocument()
+
+    rerender(<SyncGutter state="conflict" />)
+    expect(screen.getByRole('img', { name: /lo resolvió tu tutor/i })).toBeInTheDocument()
   })
 })
