@@ -10,7 +10,14 @@ export interface LocalHourLog {
   hours: number
   activity: string
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+  /** Lo que escribió el tutor al revisar. Es suyo: la sincronización no lo pisa. */
   reviewNote?: string | null
+  /**
+   * Por qué la última sincronización de esta fila no salió como el estudiante
+   * esperaba, en sus palabras. Va aparte de reviewNote porque son dos cosas
+   * distintas: una es el juicio del tutor y la otra es qué pasó con el envío.
+   */
+  syncNote?: string | null
   version: number
   updatedAt: string
   syncState: SyncState

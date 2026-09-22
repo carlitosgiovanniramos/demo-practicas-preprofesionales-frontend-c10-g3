@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
-export type SyncState = 'local' | 'queued' | 'synced' | 'failed'
+export type SyncState = 'local' | 'queued' | 'synced' | 'failed' | 'conflict'
 
 // Cada estado se distingue por RELLENO además de por color: hueco, rayado a
 // medias, sólido y rayado en diagonal.
@@ -28,6 +28,17 @@ const GUTTER: Record<SyncState, { label: string; className: string; style?: CSSP
     style: {
       backgroundImage:
         'repeating-linear-gradient(45deg, hsl(var(--dot-void)) 0 2px, transparent 2px 5px)',
+    },
+  },
+  // Distinto de "failed" a propósito: el envío llegó bien, lo que pasa es que
+  // el tutor ya había resuelto la hora. Decirle "Rechazado" al estudiante
+  // mezclaría su decisión con un fallo de red.
+  conflict: {
+    label: 'Lo resolvió tu tutor',
+    className: 'border border-dotPending',
+    style: {
+      backgroundImage:
+        'repeating-linear-gradient(135deg, hsl(var(--dot-pending)) 0 2px, transparent 2px 5px)',
     },
   },
 }
