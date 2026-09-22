@@ -18,19 +18,6 @@ en 10. Tres números para la misma regla de negocio y ninguno coincide con los o
 Nadie recuerda cuál es el correcto. Probablemente ninguno. Hay que preguntarle a alguien de
 la unidad de vinculación cuántas horas se pueden registrar por día antes de tocar esto.
 
-## D-08 · El indicador de sync miente por una ventana corta
-
-`src/offline/sync/status.ts`, `src/offline/sync/scheduler.ts`.
-
-Cuando termina un push, `runSync` llama `setStatus({ syncing: false, lastSyncAt: ... })`.
-En ese momento el indicador ya se pinta como sincronizado. El contador de `pending` se
-recalcula aparte, en un `await db.outbox.count()` una línea después. Entre esas dos
-llamadas hay una vuelta al event loop en la que el estado en memoria dice "ya terminé" con
-un contador de pendientes que todavía no se actualizó. Es una ventana de milisegundos, no
-la vas a notar mirando la pantalla, pero si escribes un test que aserte sobre el orden de
-los estados del indicador, la vas a agarrar. No nos alcanzó a arreglar. Hay que juntar
-ambos `setStatus` en uno solo, o calcular `pending` antes de marcar `syncing: false`.
-
 ## D-09 · `HourLogForm.tsx` hace de todo
 
 `src/components/HourLogForm.tsx`, 348 líneas.
@@ -54,3 +41,38 @@ No supimos testear hooks que tocan IndexedDB y lo dejamos así. Todos usan `useL
 hacerlo acá, pero nunca nos sentamos a escribirlos. Si vas a tocar cómo se leen las horas o
 la plaza del estudiante desde la UI, vas a ciegas. No hay red de seguridad que te avise si
 rompiste algo.
+
+## E1-01 · El push puede vaciar el outbox antes de saber si el servidor recibió las operaciones
+
+`src/offline/sync/push.ts`, líneas 31–58. Si la red se cae durante `pushOutbox`, las
+operaciones en cola **se borran del outbox sin que el servidor las haya visto**. Las horas
+quedan en `db.hourLogs` con `syncState: 'queued'` pero sin entrada en la cola para reintentar
+— se evaporan silenciosamente hasta que un pull futuro las sobrescribe con lo que el servidor
+tiene (que es nada, porque nunca llegaron).
+
+El orden en `push.ts:47-49` es: primero `await db.outbox.bulkDelete(...)` (vacía la cola) y
+después `await api('/sync/push', ...)` (recién le pide al servidor). Si la red cae entre las
+dos, `pushOutbox` rechaza, `db.outbox` ya quedó vacío, y la próxima corrida no tiene nada
+que reenviar.
+
+### Evidencia
+
+`src/offline/sync/push.spec.ts:85-134` simula la caída inyectando un throw en `api` (sin
+sleeps ni timers). Hoy **falla en rojo** con `expected +0 to be 2`: la cola quedó en 0
+cuando debería seguir teniendo las 2 operaciones encoladas, listas para reintento. Cuando el
+orden se invierta (fetch antes de bulkDelete), ese assert pasa a verde y el bug queda
+cerrado.
+
+### Alcance
+
+Solo horas. `OutboxEntry.entity` en `db.ts:54` está tipada como literal `'hourLog'`.
+Documentos y evaluaciones nunca pasan por el outbox — entran exclusivamente vía
+`pullChanges`. La pérdida es de horas únicamente.
+
+### Camino del fix (historia aparte)
+
+Invertir el orden: hacer `api('/sync/push', ...)` primero y vaciar la cola solo para las ops
+que `results` marcó `applied`/`rejected`. Las `conflict` se re-encolan con `attempts++`.
+Esto cierra también D-01 (duplicados del backend): si el push corta a la mitad y se reintenta
+con éxito, el servidor ya no aplica dos veces porque las ops problemáticas se re-encolan en
+lugar de duplicarse.
