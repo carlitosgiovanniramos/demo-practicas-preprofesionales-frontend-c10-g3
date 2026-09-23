@@ -40,20 +40,23 @@ export async function pushOutbox(): Promise<{ applied: number; failed: number }>
     payload: e.payload,
   }))
 
-  // El outbox es lo único que sabe qué id local le corresponde a cada operación,
-  // así que el mapa se captura en memoria antes de vaciarlo.
   const localIds = new Map(entries.map((e) => [e.clientOpId, Number(e.payload.id)]))
-
-  await db.outbox.bulkDelete(entries.map((e) => e.id as number))
 
   const { results } = await api<{ results: SyncOperationResult[] }>('/sync/push', {
     method: 'POST',
     body: JSON.stringify({ ops }),
   })
+  const attemptedClientOpIds = new Set(entries.map((entry) => entry.clientOpId))
+  const correlatedResults = results.filter((result) => attemptedClientOpIds.has(result.clientOpId))
+  const confirmedIds = new Set(correlatedResults.map((result) => result.clientOpId))
 
-  await applyResults(results, localIds)
+  await db.transaction('rw', [db.hourLogs, db.outbox], async () => {
+    await applyResults(correlatedResults, localIds)
+    await db.outbox.bulkDelete(entries.filter((entry) => confirmedIds.has(entry.clientOpId)).map((entry) => entry.id as number))
+  })
+
   return {
-    applied: results.filter((r) => r.status === 'applied').length,
-    failed: results.filter((r) => r.status !== 'applied').length,
+    applied: correlatedResults.filter((result) => result.status === 'applied').length,
+    failed: correlatedResults.filter((result) => result.status !== 'applied').length,
   }
 }
