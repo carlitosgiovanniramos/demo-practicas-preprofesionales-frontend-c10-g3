@@ -174,7 +174,7 @@ describe('pushOutbox', () => {
     })
 
     await expect(pushOutbox()).resolves.toEqual({ applied: 0, failed: 1 })
-    await expect(db.hourLogs.get(30)).resolves.toMatchObject({ syncState: 'failed', reviewNote: 'invalid hours' })
+    await expect(db.hourLogs.get(30)).resolves.toMatchObject({ syncState: 'failed', syncNote: 'invalid hours' })
     await expect(db.outbox.count()).resolves.toBe(0)
   })
 
