@@ -46,6 +46,14 @@ function submittedNote(hours: HoursSummary) {
   return <span className="text-pending"> · {hours.submittedHours.toFixed(1)} sin aprobar</span>
 }
 
+// Cuando un envío no salió como el estudiante esperaba, la fila se lo dice en
+// la misma línea, con palabras. El indicador del margen solo puede dar el
+// titular; el porqué va acá.
+function SyncNote({ note }: { note?: string | null }) {
+  if (!note) return null
+  return <span className="mt-0.5 block text-13 text-pending">{note}</span>
+}
+
 function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
   if (logs.length === 0) {
     return (
@@ -68,7 +76,10 @@ function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
               {log.startTime}–{log.endTime}
             </span>
             <span className="font-data text-14 text-ink sm:w-14">{log.hours}</span>
-            <span className="flex-1 text-14 text-inkBody">{log.activity}</span>
+            <span className="flex-1 text-14 text-inkBody">
+              {log.activity}
+              <SyncNote note={log.syncNote} />
+            </span>
             <span className="sm:w-32 sm:text-right">
               <StatusBadge status={log.status} />
             </span>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { api } from '@/api/client'
+import { ApiError, api } from '@/api/client'
 import { db } from '@/offline/db'
 import { enqueue, pushOutbox } from './push'
 
@@ -12,6 +12,23 @@ beforeEach(async () => {
   await db.open()
   mockedApi.mockReset()
 })
+
+async function queueHourLog(id: number) {
+  await db.hourLogs.put({
+    id,
+    placementId: 1,
+    date: '2026-04-01',
+    startTime: '08:00',
+    endTime: '12:00',
+    hours: 4,
+    activity: 'Soporte',
+    status: 'SUBMITTED',
+    version: 1,
+    updatedAt: '2026-04-01T00:00:00.000Z',
+    syncState: 'local',
+  })
+  await enqueue({ entity: 'hourLog', op: 'create', payload: { id, hours: 4 }, baseVersion: null })
+}
 
 describe('enqueue', () => {
   it('adds an outbox entry and marks the local hour log as queued', async () => {
@@ -81,4 +98,102 @@ describe('pushOutbox', () => {
     await expect(db.outbox.count()).resolves.toBe(0)
     await expect(db.hourLogs.get(10)).resolves.toMatchObject({ syncState: 'synced', version: 2 })
   })
+
+  it('does not lose operations when the network fails so they can be retried', async () => {
+
+    await db.hourLogs.put({
+      id: 10,
+      placementId: 1,
+      date: '2026-04-01',
+      startTime: '08:00',
+      endTime: '12:00',
+      hours: 4,
+      activity: 'Soporte',
+      status: 'SUBMITTED',
+      version: 1,
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      syncState: 'local',
+    })
+    await enqueue({ entity: 'hourLog', op: 'create', payload: { id: 10, hours: 4 }, baseVersion: null })
+
+    await db.hourLogs.put({
+      id: 11,
+      placementId: 1,
+      date: '2026-04-01',
+      startTime: '13:00',
+      endTime: '17:00',
+      hours: 4,
+      activity: 'Soporte',
+      status: 'SUBMITTED',
+      version: 1,
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      syncState: 'local',
+    })
+    await enqueue({ entity: 'hourLog', op: 'create', payload: { id: 11, hours: 4 }, baseVersion: null })
+
+    mockedApi.mockImplementationOnce(async () => {
+      const remaining = await db.outbox.count()
+      expect(remaining).toBe(2)
+      throw new ApiError(0, 'red caída')
+    })
+
+    await expect(pushOutbox()).rejects.toThrow()
+
+    await expect(db.outbox.count()).resolves.toBe(2)
+    await expect(db.hourLogs.get(10)).resolves.toMatchObject({ syncState: 'queued' })
+    await expect(db.hourLogs.get(11)).resolves.toMatchObject({ syncState: 'queued' })
+
+    mockedApi.mockResolvedValueOnce({
+      results: [
+        { clientOpId: (await db.outbox.toArray())[0].clientOpId, status: 'applied', server: { id: 10, version: 2 }, reason: null },
+        { clientOpId: (await db.outbox.toArray())[1].clientOpId, status: 'applied', server: { id: 11, version: 2 }, reason: null },
+      ],
+    })
+    await expect(pushOutbox()).resolves.toEqual({ applied: 2, failed: 0 })
+    await expect(db.outbox.count()).resolves.toBe(0)
+  })
+
+  it('retains operations omitted from a partial server response', async () => {
+    await queueHourLog(20)
+    await queueHourLog(21)
+    const [first, second] = await db.outbox.toArray()
+    mockedApi.mockResolvedValue({
+      results: [{ clientOpId: first.clientOpId, status: 'applied', server: { id: 20, version: 2 }, reason: null }],
+    })
+
+    await expect(pushOutbox()).resolves.toEqual({ applied: 1, failed: 0 })
+    await expect(db.outbox.toArray()).resolves.toMatchObject([{ clientOpId: second.clientOpId }])
+    await expect(db.hourLogs.get(21)).resolves.toMatchObject({ syncState: 'queued' })
+  })
+
+  it('keeps rejected operations visible with their server reason before cleanup', async () => {
+    await queueHourLog(30)
+    const [entry] = await db.outbox.toArray()
+    mockedApi.mockResolvedValue({
+      results: [{ clientOpId: entry.clientOpId, status: 'rejected', server: { id: 30 }, reason: 'invalid hours' }],
+    })
+
+    await expect(pushOutbox()).resolves.toEqual({ applied: 0, failed: 1 })
+    await expect(db.hourLogs.get(30)).resolves.toMatchObject({ syncState: 'failed', syncNote: 'invalid hours' })
+    await expect(db.outbox.count()).resolves.toBe(0)
+  })
+
+  it('reconciles a queued negative local id without duplicate hour logs', async () => {
+    await queueHourLog(-1)
+    const [entry] = await db.outbox.toArray()
+    mockedApi.mockResolvedValue({
+      results: [{
+        clientOpId: entry.clientOpId,
+        status: 'applied',
+        server: { id: 40, placementId: 1, date: '2026-04-01', startTime: '08:00', endTime: '12:00', hours: 4, activity: 'Soporte', status: 'SUBMITTED', version: 2, updatedAt: '2026-04-01T00:00:00.000Z' },
+        reason: null,
+      }],
+    })
+
+    await pushOutbox()
+
+    await expect(db.hourLogs.toArray()).resolves.toMatchObject([{ id: 40, syncState: 'synced' }])
+    await expect(db.hourLogs.count()).resolves.toBe(1)
+  })
+
 })
