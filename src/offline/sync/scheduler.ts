@@ -12,10 +12,59 @@ function hasSession(): boolean {
   return Boolean(localStorage.getItem('access_token'))
 }
 
+/**
+ * Concesión para sincronizar, en `localStorage` porque es lo único que las dos
+ * pestañas ven a la vez. `currentSync` solo evita el solape dentro de una
+ * pestaña; dos pestañas distintas competirían por las mismas operaciones de la
+ * cola, que es una sola y compartida.
+ */
+export const SYNC_LEASE_KEY = 'practicas:sync-lease'
+
+/**
+ * Cuánto vale una concesión. Si una pestaña se cierra a mitad de un sync, la
+ * suya se queda escrita: sin caducidad nadie volvería a sincronizar nunca. El
+ * peor caso al caducar es saltarse un ciclo, porque el intervalo es de 60s.
+ */
+export const SYNC_LEASE_TTL_MS = 60_000
+
+// Identifica a esta pestaña frente a las demás. El mismo `crypto.randomUUID`
+// que ya usa el outbox para los clientOpId.
+const tabId = crypto.randomUUID()
+
+function claimSyncLease(): boolean {
+  const raw = localStorage.getItem(SYNC_LEASE_KEY)
+  if (raw) {
+    try {
+      const lease = JSON.parse(raw) as { tab?: string; at?: number }
+      const vigente = typeof lease.at === 'number' && Date.now() - lease.at < SYNC_LEASE_TTL_MS
+      if (vigente && lease.tab !== tabId) return false
+    } catch {
+      // Una concesión ilegible no debe bloquear la sincronización para siempre.
+    }
+  }
+  localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: tabId, at: Date.now() }))
+  return true
+}
+
+function releaseSyncLease(): void {
+  const raw = localStorage.getItem(SYNC_LEASE_KEY)
+  if (!raw) return
+  try {
+    const lease = JSON.parse(raw) as { tab?: string }
+    if (lease.tab !== tabId) return
+  } catch {
+    // Ilegible: la quitamos igual, nadie puede reclamarla.
+  }
+  localStorage.removeItem(SYNC_LEASE_KEY)
+}
+
 let currentSync: Promise<void> | null = null
 
 async function runSync(): Promise<void> {
   if (!hasSession()) return
+  // Otra pestaña está sincronizando esta misma cola: su resultado llega por el
+  // canal de estado, así que no hay nada que hacer aquí.
+  if (!claimSyncLease()) return
 
   setStatus({ syncing: true })
 
@@ -35,6 +84,10 @@ async function runSync(): Promise<void> {
   } catch (err) {
     console.error('sincronización falló', err)
     setStatus({ syncing: false })
+  } finally {
+    // Siempre, también si falló: una concesión retenida por un error dejaría a
+    // las demás pestañas esperando hasta que caduque.
+    releaseSyncLease()
   }
 }
 
