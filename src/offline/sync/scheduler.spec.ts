@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/offline/db'
 import { pullChanges } from './pull'
 import { pushOutbox } from './push'
-import { startSync, syncNow } from './scheduler'
+import { SYNC_LEASE_KEY, SYNC_LEASE_TTL_MS, startSync, syncNow } from './scheduler'
 import { getStatus, setStatus, subscribe } from './status'
 
 vi.mock('./pull', () => ({ pullChanges: vi.fn() }))
@@ -104,3 +104,50 @@ describe('startSync', () => {
     expect(removeSpy).toHaveBeenCalledWith('offline', expect.any(Function))
   })
 })
+
+// E1-08 · Dos pestanas comparten la misma cola local. Si las dos sincronizan a
+// la vez, compiten por las mismas operaciones. Una concesion en localStorage
+// -- que es lo unico que las dos pestanas ven -- deja sincronizar a una sola.
+describe('una sola pestana sincroniza a la vez (E1-08)', () => {
+  beforeEach(() => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockResolvedValue({ applied: 0, hasMore: false })
+    mockedPush.mockResolvedValue({ applied: 0, failed: 0 })
+  })
+
+  it('no sincroniza si otra pestana tiene la cola tomada', async () => {
+    localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: 'otra-pestana', at: Date.now() }))
+
+    await syncNow()
+
+    expect(mockedPull).not.toHaveBeenCalled()
+    expect(mockedPush).not.toHaveBeenCalled()
+  })
+
+  it('suelta la cola al terminar para que la otra pestana pueda sincronizar', async () => {
+    await syncNow()
+
+    expect(localStorage.getItem(SYNC_LEASE_KEY)).toBeNull()
+    expect(mockedPush).toHaveBeenCalledTimes(1)
+  })
+
+  it('suelta la cola aunque la sincronizacion falle', async () => {
+    mockedPull.mockRejectedValue(new Error('sin conexion'))
+
+    await syncNow()
+
+    expect(localStorage.getItem(SYNC_LEASE_KEY)).toBeNull()
+  })
+
+  // Si una pestana se cierra a mitad de un sync, su concesion se queda escrita.
+  // Sin caducidad, nadie volveria a sincronizar nunca.
+  it('ignora una concesion caducada de una pestana que ya no esta', async () => {
+    const caducada = Date.now() - SYNC_LEASE_TTL_MS - 1
+    localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: 'pestana-cerrada', at: caducada }))
+
+    await syncNow()
+
+    expect(mockedPush).toHaveBeenCalledTimes(1)
+  })
+})
+
