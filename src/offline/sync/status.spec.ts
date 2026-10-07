@@ -98,5 +98,35 @@ describe('estado compartido entre pestanas (E1-08)', () => {
     expect(b.getStatus().pending).toBe(2)
     expect(b.getStatus().online).toBe(false)
   })
-})
 
+  // Reportado por Erick en la revision del PR #8. Una pestana recien abierta
+  // arranca con pending 0 y lastSyncAt null; si al sincronizar publica su
+  // estado entero, le borra a las demas el contador que si era correcto.
+  it('una pestana nueva no borra los pendientes de la que ya estaba', async () => {
+    const a = await abrirPestana()
+    a.setStatus({ pending: 3, lastSyncAt: '2026-10-06T10:00:00.000Z' })
+
+    const b = await abrirPestana()
+    b.setStatus({ syncing: true })
+    await entregaDelMensaje()
+
+    expect(a.getStatus()).toMatchObject({
+      pending: 3,
+      lastSyncAt: '2026-10-06T10:00:00.000Z',
+      syncing: true,
+    })
+  })
+
+  // Un cambio que solo toca online no tiene por que viajar: es de cada pestana.
+  it('no publica nada cuando el parche solo trae online', async () => {
+    const a = await abrirPestana()
+    await abrirPestana()
+
+    const espia = vi.spyOn(BroadcastChannel.prototype, 'postMessage')
+    a.setStatus({ online: false })
+    await entregaDelMensaje()
+
+    expect(espia).not.toHaveBeenCalled()
+    espia.mockRestore()
+  })
+})

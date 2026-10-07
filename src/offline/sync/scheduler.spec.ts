@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/offline/db'
 import { pullChanges } from './pull'
 import { pushOutbox } from './push'
-import { SYNC_LEASE_KEY, SYNC_LEASE_TTL_MS, startSync, syncNow } from './scheduler'
+import { SYNC_LEASE_KEY, SYNC_LEASE_TTL_MS, claimSyncLease, releaseSyncLease, startSync, syncNow } from './scheduler'
 import { getStatus, setStatus, subscribe } from './status'
 
 vi.mock('./pull', () => ({ pullChanges: vi.fn() }))
@@ -116,7 +116,7 @@ describe('una sola pestana sincroniza a la vez (E1-08)', () => {
   })
 
   it('no sincroniza si otra pestana tiene la cola tomada', async () => {
-    localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: 'otra-pestana', at: Date.now() }))
+    await db.meta.put({ key: SYNC_LEASE_KEY, value: JSON.stringify({ tab: 'otra-pestana', at: Date.now() }) })
 
     await syncNow()
 
@@ -127,7 +127,7 @@ describe('una sola pestana sincroniza a la vez (E1-08)', () => {
   it('suelta la cola al terminar para que la otra pestana pueda sincronizar', async () => {
     await syncNow()
 
-    expect(localStorage.getItem(SYNC_LEASE_KEY)).toBeNull()
+    await expect(db.meta.get(SYNC_LEASE_KEY)).resolves.toBeUndefined()
     expect(mockedPush).toHaveBeenCalledTimes(1)
   })
 
@@ -136,18 +136,42 @@ describe('una sola pestana sincroniza a la vez (E1-08)', () => {
 
     await syncNow()
 
-    expect(localStorage.getItem(SYNC_LEASE_KEY)).toBeNull()
+    await expect(db.meta.get(SYNC_LEASE_KEY)).resolves.toBeUndefined()
   })
 
   // Si una pestana se cierra a mitad de un sync, su concesion se queda escrita.
   // Sin caducidad, nadie volveria a sincronizar nunca.
   it('ignora una concesion caducada de una pestana que ya no esta', async () => {
     const caducada = Date.now() - SYNC_LEASE_TTL_MS - 1
-    localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: 'pestana-cerrada', at: caducada }))
+    await db.meta.put({ key: SYNC_LEASE_KEY, value: JSON.stringify({ tab: 'pestana-cerrada', at: caducada }) })
 
     await syncNow()
 
     expect(mockedPush).toHaveBeenCalledTimes(1)
   })
-})
+  // Pedido por Jimmy en la revision del PR #8. Dos pestanas que arrancan a la
+  // vez piden la concesion simultaneamente. Con un leer-y-luego-escribir las
+  // dos la verian libre y entrarian; dentro de una transaccion, no.
+  it('con dos pestanas pidiendola a la vez, solo una entra', async () => {
+    const intentos = await Promise.all([claimSyncLease('pestana-A'), claimSyncLease('pestana-B')])
 
+    expect(intentos.filter(Boolean)).toHaveLength(1)
+  })
+
+  it('la perdedora puede entrar cuando la ganadora suelta', async () => {
+    await claimSyncLease('pestana-A')
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(false)
+
+    await releaseSyncLease('pestana-A')
+
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(true)
+  })
+
+  it('una pestana no puede soltar la concesion de otra', async () => {
+    await claimSyncLease('pestana-A')
+
+    await releaseSyncLease('pestana-B')
+
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(false)
+  })
+})

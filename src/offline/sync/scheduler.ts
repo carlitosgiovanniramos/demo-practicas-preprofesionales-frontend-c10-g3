@@ -13,10 +13,16 @@ function hasSession(): boolean {
 }
 
 /**
- * Concesión para sincronizar, en `localStorage` porque es lo único que las dos
- * pestañas ven a la vez. `currentSync` solo evita el solape dentro de una
+ * Concesión para sincronizar. `currentSync` solo evita el solape dentro de una
  * pestaña; dos pestañas distintas competirían por las mismas operaciones de la
  * cola, que es una sola y compartida.
+ *
+ * Vive en la misma base que la cola que protege, y no en `localStorage`, por
+ * una razón concreta: `localStorage` no ofrece comparar-y-escribir. Leer la
+ * clave y luego escribirla son dos operaciones, y dos pestañas pueden leerla
+ * vacía a la vez y entrar las dos. IndexedDB serializa las transacciones de
+ * escritura sobre el mismo almacén entre pestañas del mismo origen, así que
+ * leer y escribir dentro de una transacción sí es atómico.
  */
 export const SYNC_LEASE_KEY = 'practicas:sync-lease'
 
@@ -31,31 +37,43 @@ export const SYNC_LEASE_TTL_MS = 60_000
 // que ya usa el outbox para los clientOpId.
 const tabId = crypto.randomUUID()
 
-function claimSyncLease(): boolean {
-  const raw = localStorage.getItem(SYNC_LEASE_KEY)
-  if (raw) {
-    try {
-      const lease = JSON.parse(raw) as { tab?: string; at?: number }
-      const vigente = typeof lease.at === 'number' && Date.now() - lease.at < SYNC_LEASE_TTL_MS
-      if (vigente && lease.tab !== tabId) return false
-    } catch {
-      // Una concesión ilegible no debe bloquear la sincronización para siempre.
-    }
+function leaseHolder(value: string | undefined): { tab?: string; at?: number } | null {
+  if (value === undefined) return null
+  try {
+    return JSON.parse(value) as { tab?: string; at?: number }
+  } catch {
+    // Una concesión ilegible no debe bloquear la sincronización para siempre.
+    return null
   }
-  localStorage.setItem(SYNC_LEASE_KEY, JSON.stringify({ tab: tabId, at: Date.now() }))
-  return true
 }
 
-function releaseSyncLease(): void {
-  const raw = localStorage.getItem(SYNC_LEASE_KEY)
-  if (!raw) return
-  try {
-    const lease = JSON.parse(raw) as { tab?: string }
-    if (lease.tab !== tabId) return
-  } catch {
-    // Ilegible: la quitamos igual, nadie puede reclamarla.
-  }
-  localStorage.removeItem(SYNC_LEASE_KEY)
+/**
+ * Toma la concesión si está libre o caducada. Leer y escribir ocurren dentro de
+ * la misma transacción, que es lo que impide que dos pestañas la vean libre a
+ * la vez y entren las dos.
+ *
+ * `tab` existe para que los tests puedan simular dos pestañas; en producción
+ * siempre es la de este módulo.
+ */
+export async function claimSyncLease(tab: string = tabId): Promise<boolean> {
+  return db.transaction('rw', db.meta, async () => {
+    const actual = leaseHolder((await db.meta.get(SYNC_LEASE_KEY))?.value)
+    const vigente =
+      actual !== null && typeof actual.at === 'number' && Date.now() - actual.at < SYNC_LEASE_TTL_MS
+    if (vigente && actual.tab !== tab) return false
+
+    await db.meta.put({ key: SYNC_LEASE_KEY, value: JSON.stringify({ tab, at: Date.now() }) })
+    return true
+  })
+}
+
+/** Suelta la concesión, solo si sigue siendo nuestra. */
+export async function releaseSyncLease(tab: string = tabId): Promise<void> {
+  await db.transaction('rw', db.meta, async () => {
+    const actual = leaseHolder((await db.meta.get(SYNC_LEASE_KEY))?.value)
+    if (actual !== null && actual.tab !== tab) return
+    await db.meta.delete(SYNC_LEASE_KEY)
+  })
 }
 
 let currentSync: Promise<void> | null = null
@@ -64,7 +82,7 @@ async function runSync(): Promise<void> {
   if (!hasSession()) return
   // Otra pestaña está sincronizando esta misma cola: su resultado llega por el
   // canal de estado, así que no hay nada que hacer aquí.
-  if (!claimSyncLease()) return
+  if (!(await claimSyncLease())) return
 
   setStatus({ syncing: true })
 
@@ -87,7 +105,7 @@ async function runSync(): Promise<void> {
   } finally {
     // Siempre, también si falló: una concesión retenida por un error dejaría a
     // las demás pestañas esperando hasta que caduque.
-    releaseSyncLease()
+    await releaseSyncLease()
   }
 }
 
