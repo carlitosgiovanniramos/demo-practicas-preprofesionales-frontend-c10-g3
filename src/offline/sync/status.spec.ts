@@ -36,8 +36,17 @@ describe('estado compartido entre pestanas (E1-08)', () => {
     return mod
   }
 
-  // Deja que el mensaje de BroadcastChannel cruce entre instancias.
-  const entregaDelMensaje = () => new Promise((resolve) => setTimeout(resolve, 0))
+  // El BroadcastChannel entrega de forma asincrona y no garantiza en cuantos
+  // ticks. Esperar un tiempo fijo hace el test inestable; esperamos a que la
+  // condicion se cumpla, con un tope para que un fallo real siga fallando.
+  async function esperarHasta(condicion: () => boolean): Promise<void> {
+    for (let i = 0; i < 200 && !condicion(); i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+  }
+
+  // Para asertos de ausencia: no hay condicion que esperar, solo dar margen.
+  const entregaDelMensaje = () => new Promise((resolve) => setTimeout(resolve, 20))
 
   afterEach(() => {
     for (const pestana of abiertas) pestana.closeSyncStatusChannel()
@@ -49,7 +58,7 @@ describe('estado compartido entre pestanas (E1-08)', () => {
     const b = await abrirPestana()
 
     a.setStatus({ pending: 4, lastSyncAt: '2026-10-06T10:00:00.000Z' })
-    await entregaDelMensaje()
+    await esperarHasta(() => b.getStatus().pending === 4)
 
     expect(b.getStatus()).toMatchObject({ pending: 4, lastSyncAt: '2026-10-06T10:00:00.000Z' })
   })
@@ -62,7 +71,7 @@ describe('estado compartido entre pestanas (E1-08)', () => {
     b.subscribe(avisos)
 
     a.setStatus({ syncing: true })
-    await entregaDelMensaje()
+    await esperarHasta(() => b.getStatus().syncing)
 
     expect(avisos).toHaveBeenCalled()
     expect(b.getStatus().syncing).toBe(true)
@@ -76,7 +85,7 @@ describe('estado compartido entre pestanas (E1-08)', () => {
 
     const espia = vi.spyOn(BroadcastChannel.prototype, 'postMessage')
     a.setStatus({ pending: 1 })
-    await entregaDelMensaje()
+    await esperarHasta(() => b.getStatus().pending === 1)
     await entregaDelMensaje()
 
     // Un solo envio: el de la pestana que origino el cambio.
@@ -93,7 +102,7 @@ describe('estado compartido entre pestanas (E1-08)', () => {
 
     b.setStatus({ online: false })
     a.setStatus({ online: true, pending: 2 })
-    await entregaDelMensaje()
+    await esperarHasta(() => b.getStatus().pending === 2)
 
     expect(b.getStatus().pending).toBe(2)
     expect(b.getStatus().online).toBe(false)
@@ -108,7 +117,7 @@ describe('estado compartido entre pestanas (E1-08)', () => {
 
     const b = await abrirPestana()
     b.setStatus({ syncing: true })
-    await entregaDelMensaje()
+    await esperarHasta(() => a.getStatus().syncing)
 
     expect(a.getStatus()).toMatchObject({
       pending: 3,

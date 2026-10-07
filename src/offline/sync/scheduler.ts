@@ -124,7 +124,21 @@ export function syncNow(): Promise<void> {
  * 60s. Debe llamarse una sola vez (desde un useEffect en AppLayout) — llamar
  * en cada hook crearía un timer y un listener por cada consumidor.
  */
+/**
+ * Pone el contador de pendientes al abrir la pestaña.
+ *
+ * Una pestaña recién abierta arranca en cero y no sabe qué hay encolado. La
+ * cola es la misma para cada pestaña, así que leerla da el número correcto sin
+ * preguntarle a ninguna — y sin depender de que haya red, que es justo cuando
+ * más importa acertar.
+ */
+async function primeraLecturaDeLaCola(): Promise<void> {
+  setStatus({ pending: await db.outbox.count() })
+}
+
 export function startSync(): () => void {
+  void primeraLecturaDeLaCola()
+
   void syncNow()
 
   const handleOnline = () => {

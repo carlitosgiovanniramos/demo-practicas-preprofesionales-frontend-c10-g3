@@ -175,3 +175,35 @@ describe('una sola pestana sincroniza a la vez (E1-08)', () => {
     await expect(claimSyncLease('pestana-B')).resolves.toBe(false)
   })
 })
+
+// Tercer punto de la revision de Erick: una pestana nueva no deberia mostrar
+// cero pendientes mientras otra muestra tres. No hace falta preguntarselo a
+// las demas -- la cola es compartida, basta leerla.
+describe('una pestana nueva arranca con el contador real (E1-08)', () => {
+  it('lee la cola al montar, aunque no haya red', async () => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockRejectedValue(new Error('sin conexion'))
+    await db.outbox.bulkAdd(
+      [31, 32].map((id) => ({
+        clientOpId: `op-${id}`,
+        entity: 'hourLog' as const,
+        op: 'update' as const,
+        payload: { id },
+        baseVersion: 1,
+        createdAt: '2026-10-01T00:00:00.000Z',
+        attempts: 0,
+        lastError: null,
+      })),
+    )
+
+    const parar = startSync()
+    // La lectura de la cola pasa por IndexedDB y no resuelve en un tick fijo.
+    for (let i = 0; i < 200 && getStatus().pending !== 2; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+
+    expect(getStatus().pending).toBe(2)
+    parar()
+  })
+})
+
