@@ -1,15 +1,51 @@
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/offline/db'
 import { pullChanges } from './pull'
 import { pushOutbox } from './push'
+import { backoffDelayMs, maxPushAttempts } from './retry'
 import { SYNC_LEASE_KEY, SYNC_LEASE_TTL_MS, claimSyncLease, releaseSyncLease, startSync, syncNow } from './scheduler'
 import { getStatus, setStatus, subscribe } from './status'
 
 vi.mock('./pull', () => ({ pullChanges: vi.fn() }))
 vi.mock('./push', () => ({ pushOutbox: vi.fn() }))
+// La espera entre reintentos se anula aqui para no tardar segundos reales: lo
+// que crezca 1s, 2s, 4s se prueba aparte en retry.spec.ts. maxPushAttempts se
+// conserva tal cual porque es el tope que estos tests ejercitan.
+vi.mock('./retry', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./retry')>()),
+  backoffDelayMs: vi.fn(() => 0),
+}))
 
 const mockedPull = vi.mocked(pullChanges)
 const mockedPush = vi.mocked(pushOutbox)
+const mockedBackoff = vi.mocked(backoffDelayMs)
+
+async function queueOperation(id: number) {
+  await db.hourLogs.put({
+    id,
+    placementId: 1,
+    date: '2026-04-01',
+    startTime: '08:00',
+    endTime: '12:00',
+    hours: 4,
+    activity: 'Soporte',
+    status: 'SUBMITTED',
+    version: 1,
+    updatedAt: '2026-04-01T00:00:00.000Z',
+    syncState: 'queued',
+  })
+  await db.outbox.add({
+    clientOpId: `op-${id}`,
+    entity: 'hourLog',
+    op: 'update',
+    payload: { id },
+    baseVersion: 1,
+    createdAt: '2026-04-01T00:00:00.000Z',
+    attempts: 0,
+    lastError: null,
+  })
+}
 
 beforeEach(async () => {
   await db.delete()
@@ -17,6 +53,8 @@ beforeEach(async () => {
   localStorage.clear()
   mockedPull.mockReset()
   mockedPush.mockReset()
+  mockedBackoff.mockClear()
+  vi.restoreAllMocks()
   setStatus({ online: true, pending: 0, lastSyncAt: null, syncing: false })
 })
 
@@ -102,6 +140,86 @@ describe('startSync', () => {
     stop()
     expect(removeSpy).toHaveBeenCalledWith('online', expect.any(Function))
     expect(removeSpy).toHaveBeenCalledWith('offline', expect.any(Function))
+  })
+})
+
+// E1-06 · Con senal intermitente, un fallo de envio no puede quedarse en un
+// solo intento ni quemar bateria reintentando sin pausa.
+describe('reintento del envio con espera creciente (E1-06)', () => {
+  beforeEach(() => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockResolvedValue({ applied: 0, hasMore: false })
+  })
+
+  it('reintenta hasta el tope configurado cuando el envio falla', async () => {
+    mockedPush.mockRejectedValue(new Error('sin conexion'))
+
+    await syncNow()
+
+    expect(mockedPush).toHaveBeenCalledTimes(maxPushAttempts)
+  })
+
+  it('espera un poco mas antes de cada reintento', async () => {
+    mockedPush.mockRejectedValue(new Error('sin conexion'))
+
+    await syncNow()
+
+    // Una espera por cada reintento, y cada una pedida para un intento mayor
+    // que la anterior: el crecimiento concreto se prueba en retry.spec.ts.
+    const intentos = mockedBackoff.mock.calls.map(([n]) => n)
+    expect(intentos).toEqual([...Array(maxPushAttempts - 1)].map((_, i) => i + 1))
+  })
+
+  it('deja de reintentar en cuanto el envio sale bien', async () => {
+    mockedPush
+      .mockRejectedValueOnce(new Error('sin conexion'))
+      .mockResolvedValue({ applied: 1, failed: 0 })
+
+    await syncNow()
+
+    expect(mockedPush).toHaveBeenCalledTimes(2)
+    expect(getStatus().lastSyncAt).toBeTruthy()
+  })
+
+  it('anota el intento y el ultimo error en la cola local', async () => {
+    await queueOperation(10)
+    mockedPush.mockRejectedValue(new Error('la red se cayo'))
+
+    await syncNow()
+
+    const [entrada] = await db.outbox.toArray()
+    expect(entrada.attempts).toBe(maxPushAttempts)
+    expect(entrada.lastError).toBe('la red se cayo')
+  })
+
+  it('tras agotar los reintentos marca la fila como fallida y NO la descarta', async () => {
+    await queueOperation(10)
+    mockedPush.mockRejectedValue(new Error('la red se cayo'))
+
+    await syncNow()
+
+    // La operacion sigue en la cola: se reintentara en la proxima corrida.
+    await expect(db.outbox.count()).resolves.toBe(1)
+    const fila = await db.hourLogs.get(10)
+    expect(fila?.syncState).toBe('failed')
+    expect(fila?.syncNote).toBeTruthy()
+    // Y el contador refleja lo que de verdad hay pendiente.
+    expect(getStatus().pending).toBe(1)
+  })
+
+  it('cancela los reintentos si el dispositivo pierde la conexion', async () => {
+    await queueOperation(10)
+    mockedPush.mockRejectedValue(new Error('sin conexion'))
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false)
+
+    await syncNow()
+
+    // Un solo intento: sin red no tiene sentido quemar el tope. La cola queda
+    // intacta y el listener de 'online' reanuda al volver la senal.
+    expect(mockedPush).toHaveBeenCalledTimes(1)
+    await expect(db.outbox.count()).resolves.toBe(1)
+    const fila = await db.hourLogs.get(10)
+    expect(fila?.syncState).toBe('queued')
   })
 })
 
@@ -206,4 +324,3 @@ describe('una pestana nueva arranca con el contador real (E1-08)', () => {
     parar()
   })
 })
-
