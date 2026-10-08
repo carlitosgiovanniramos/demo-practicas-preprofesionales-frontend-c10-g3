@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/offline/db'
 import { pullChanges } from './pull'
 import { pushOutbox } from './push'
-import { startSync, syncNow } from './scheduler'
+import { SYNC_LEASE_KEY, SYNC_LEASE_TTL_MS, claimSyncLease, releaseSyncLease, startSync, syncNow } from './scheduler'
 import { getStatus, setStatus, subscribe } from './status'
 
 vi.mock('./pull', () => ({ pullChanges: vi.fn() }))
@@ -104,3 +104,106 @@ describe('startSync', () => {
     expect(removeSpy).toHaveBeenCalledWith('offline', expect.any(Function))
   })
 })
+
+// E1-08 · Dos pestanas comparten la misma cola local. Si las dos sincronizan a
+// la vez, compiten por las mismas operaciones. Una concesion en localStorage
+// -- que es lo unico que las dos pestanas ven -- deja sincronizar a una sola.
+describe('una sola pestana sincroniza a la vez (E1-08)', () => {
+  beforeEach(() => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockResolvedValue({ applied: 0, hasMore: false })
+    mockedPush.mockResolvedValue({ applied: 0, failed: 0 })
+  })
+
+  it('no sincroniza si otra pestana tiene la cola tomada', async () => {
+    await db.meta.put({ key: SYNC_LEASE_KEY, value: JSON.stringify({ tab: 'otra-pestana', at: Date.now() }) })
+
+    await syncNow()
+
+    expect(mockedPull).not.toHaveBeenCalled()
+    expect(mockedPush).not.toHaveBeenCalled()
+  })
+
+  it('suelta la cola al terminar para que la otra pestana pueda sincronizar', async () => {
+    await syncNow()
+
+    await expect(db.meta.get(SYNC_LEASE_KEY)).resolves.toBeUndefined()
+    expect(mockedPush).toHaveBeenCalledTimes(1)
+  })
+
+  it('suelta la cola aunque la sincronizacion falle', async () => {
+    mockedPull.mockRejectedValue(new Error('sin conexion'))
+
+    await syncNow()
+
+    await expect(db.meta.get(SYNC_LEASE_KEY)).resolves.toBeUndefined()
+  })
+
+  // Si una pestana se cierra a mitad de un sync, su concesion se queda escrita.
+  // Sin caducidad, nadie volveria a sincronizar nunca.
+  it('ignora una concesion caducada de una pestana que ya no esta', async () => {
+    const caducada = Date.now() - SYNC_LEASE_TTL_MS - 1
+    await db.meta.put({ key: SYNC_LEASE_KEY, value: JSON.stringify({ tab: 'pestana-cerrada', at: caducada }) })
+
+    await syncNow()
+
+    expect(mockedPush).toHaveBeenCalledTimes(1)
+  })
+  // Pedido por Jimmy en la revision del PR #8. Dos pestanas que arrancan a la
+  // vez piden la concesion simultaneamente. Con un leer-y-luego-escribir las
+  // dos la verian libre y entrarian; dentro de una transaccion, no.
+  it('con dos pestanas pidiendola a la vez, solo una entra', async () => {
+    const intentos = await Promise.all([claimSyncLease('pestana-A'), claimSyncLease('pestana-B')])
+
+    expect(intentos.filter(Boolean)).toHaveLength(1)
+  })
+
+  it('la perdedora puede entrar cuando la ganadora suelta', async () => {
+    await claimSyncLease('pestana-A')
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(false)
+
+    await releaseSyncLease('pestana-A')
+
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(true)
+  })
+
+  it('una pestana no puede soltar la concesion de otra', async () => {
+    await claimSyncLease('pestana-A')
+
+    await releaseSyncLease('pestana-B')
+
+    await expect(claimSyncLease('pestana-B')).resolves.toBe(false)
+  })
+})
+
+// Tercer punto de la revision de Erick: una pestana nueva no deberia mostrar
+// cero pendientes mientras otra muestra tres. No hace falta preguntarselo a
+// las demas -- la cola es compartida, basta leerla.
+describe('una pestana nueva arranca con el contador real (E1-08)', () => {
+  it('lee la cola al montar, aunque no haya red', async () => {
+    localStorage.setItem('access_token', 'tok')
+    mockedPull.mockRejectedValue(new Error('sin conexion'))
+    await db.outbox.bulkAdd(
+      [31, 32].map((id) => ({
+        clientOpId: `op-${id}`,
+        entity: 'hourLog' as const,
+        op: 'update' as const,
+        payload: { id },
+        baseVersion: 1,
+        createdAt: '2026-10-01T00:00:00.000Z',
+        attempts: 0,
+        lastError: null,
+      })),
+    )
+
+    const parar = startSync()
+    // La lectura de la cola pasa por IndexedDB y no resuelve en un tick fijo.
+    for (let i = 0; i < 200 && getStatus().pending !== 2; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    }
+
+    expect(getStatus().pending).toBe(2)
+    parar()
+  })
+})
+
