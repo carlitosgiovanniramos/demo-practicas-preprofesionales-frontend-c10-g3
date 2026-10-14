@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '@/api/client'
@@ -66,12 +66,12 @@ describe('AuthProvider', () => {
     const { result } = renderHook(() => useAuth(), { wrapper: withProvider })
 
     await act(async () => {
-      await result.current.login('empresa0@miyura.com', 'yura1234')
+      await result.current.login('empresa0@miyura.com', '')
     })
 
     expect(api).toHaveBeenCalledWith('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'empresa0@miyura.com', password: 'yura1234' }),
+      body: JSON.stringify({ email: 'empresa0@miyura.com', password: '' }),
     })
     expect(localStorage.getItem('access_token')).toBe('tok-123')
     expect(result.current.user?.companyId).toBe(1)
@@ -95,6 +95,22 @@ describe('AuthProvider', () => {
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('user')).toBeNull()
     expect(result.current.user).toBeNull()
+  })
+
+  it('closes the session in this tab when another tab removes the shared token', async () => {
+    vi.mocked(api).mockResolvedValue({
+      accessToken: 'tok-123',
+      user: { id: 5, email: 'empresa0@miyura.com', fullName: 'Empresa 0', role: 'COMPANY', companyId: 1 },
+    })
+    const { result } = renderHook(() => useAuth(), { wrapper: withProvider })
+    await act(async () => result.current.login('empresa0@miyura.com', ''))
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'access_token', oldValue: 'tok-123', newValue: null }))
+    })
+
+    await waitFor(() => expect(result.current.user).toBeNull())
+    expect(sessionStorage.getItem('auth_message')).toMatch(/otra pestaña/)
   })
 
   it('logout wipes local Dexie data, including the sync checkpoint, so the next session starts clean', async () => {
