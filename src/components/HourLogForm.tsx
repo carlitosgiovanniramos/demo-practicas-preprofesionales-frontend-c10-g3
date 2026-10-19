@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { hourLogFieldsError } from '@/lib/hour-log-rules'
 import { db, type LocalHourLog } from '@/offline/db'
 import { enqueue } from '@/offline/sync/push'
 
@@ -65,46 +66,6 @@ function computeDurationLabel(startTime: string, endTime: string): string | null
   return `Duración calculada: ${diffHours.toFixed(1)} h`
 }
 
-// D-06 (copia 3): límite de horas por registro. El DTO del backend acepta
-// hasta 12 horas y su propio servicio corta en 10; aquí, en el formulario,
-// el tope es 8. Los tres umbrales divergen a propósito y no se unifican.
-function validateHoursOnSubmit(hours: string, startTime: string, endTime: string): string | null {
-  const hoursValue = Number(hours)
-  if (!hours || Number.isNaN(hoursValue)) {
-    return 'Ingresa un número de horas válido'
-  }
-  if (hoursValue <= 0) {
-    return 'Las horas deben ser mayores a 0'
-  }
-  if (hoursValue > 8) {
-    return 'No puedes registrar más de 8 horas en un mismo día'
-  }
-  if (startTime && endTime && endTime <= startTime) {
-    return 'La hora de fin debe ser posterior a la de inicio'
-  }
-  return null
-}
-
-// Mismo chequeo que arriba, copiado (no reutilizado) para el aviso que se
-// muestra en vivo bajo el campo Horas mientras el estudiante escribe, antes
-// de siquiera intentar guardar.
-function validateHoursLive(hours: string, startTime: string, endTime: string): string | null {
-  const hoursValue = Number(hours)
-  if (!hours || Number.isNaN(hoursValue)) {
-    return 'Ingresa un número de horas válido'
-  }
-  if (hoursValue <= 0) {
-    return 'Las horas deben ser mayores a 0'
-  }
-  if (hoursValue > 8) {
-    return 'No puedes registrar más de 8 horas en un mismo día'
-  }
-  if (startTime && endTime && endTime <= startTime) {
-    return 'La hora de fin debe ser posterior a la de inicio'
-  }
-  return null
-}
-
 export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
   const [date, setDate] = useState(todayAsInputValue())
   const [startTime, setStartTime] = useState('')
@@ -117,7 +78,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
 
   const confirmationLabel = formatDateForConfirmation(date)
   const durationLabel = computeDurationLabel(startTime, endTime)
-  const liveHoursWarning = hours ? validateHoursLive(hours, startTime, endTime) : null
+  const liveHoursWarning = hours ? hourLogFieldsError(hours, startTime, endTime) : null
 
   function resetForm() {
     setDate(todayAsInputValue())
@@ -144,7 +105,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
       nextErrors.activity = 'Describe la actividad realizada'
     }
 
-    const hoursMessage = validateHoursOnSubmit(hours, startTime, endTime)
+    const hoursMessage = hourLogFieldsError(hours, startTime, endTime)
     if (hoursMessage) {
       nextErrors.hours = hoursMessage
     }
