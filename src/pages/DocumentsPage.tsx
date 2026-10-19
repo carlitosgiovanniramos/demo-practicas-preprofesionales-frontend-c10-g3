@@ -1,5 +1,4 @@
 import { type ChangeEvent, type FormEvent, useRef, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { ApiError, api } from '@/api/client'
 import { Chip } from '@/components/Chip'
 import { PageHeader } from '@/components/PageHeader'
@@ -8,10 +7,11 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { parseLocalDate } from '@/lib/date'
+import { formatDate } from '@/lib/date'
 import { plural } from '@/lib/utils'
 import { db, type LocalDocument } from '@/offline/db'
 import { usePlacement } from '@/offline/hooks/usePlacement'
+import { usePlacementDocuments } from '@/offline/hooks/usePlacementDocuments'
 
 type DocumentKind = 'AGREEMENT' | 'INSURANCE' | 'REPORT' | 'EVIDENCE'
 
@@ -27,12 +27,6 @@ const KIND_LABEL: Record<DocumentKind, string> = {
 }
 
 const DOC_ROW_CLASS = 'flex min-h-row items-center justify-between gap-4 px-[18px] py-2.5'
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
 
 /** Último estado conocido de un tipo de documento, o `null` si no se subió. */
 function latestStatus(documents: LocalDocument[], kind: DocumentKind): string | null {
@@ -114,10 +108,7 @@ function DocumentsList({ documents }: { documents: LocalDocument[] | undefined }
 
 export function DocumentsPage() {
   const placement = usePlacement()
-  const documents = useLiveQuery<LocalDocument[] | undefined>(async () => {
-    if (!placement) return undefined
-    return db.documents.where('placementId').equals(placement.id).toArray()
-  }, [placement?.id])
+  const documents = usePlacementDocuments(placement)
 
   const [kind, setKind] = useState<DocumentKind>('AGREEMENT')
   const [uploading, setUploading] = useState(false)

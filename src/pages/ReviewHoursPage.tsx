@@ -18,13 +18,13 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Ledger, LedgerHeaderRow } from '@/components/ledger/Ledger'
-import { LedgerRow } from '@/components/ledger/LedgerRow'
-import { parseLocalDate } from '@/lib/date'
+import { formatDate } from '@/lib/date'
 import { summarizeHours } from '@/lib/hours'
 import { plural } from '@/lib/utils'
-import { db, type LocalHourLog, type LocalPlacement } from '@/offline/db'
+import { db, type LocalHourLog } from '@/offline/db'
 import { syncNow } from '@/offline/sync/scheduler'
+import { usePlacementById } from '@/offline/hooks/usePlacementById'
+import { HourLedger } from '@/components/ledger/HourLedgerParts'
 
 type ActionState = 'approving' | 'rejecting' | 'approved' | 'rejected' | null
 
@@ -35,25 +35,6 @@ const COMMON_REASONS = [
   'Falta detalle de la actividad',
   'La fecha no corresponde',
 ]
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function LedgerColumnHeader() {
-  return (
-    <LedgerHeaderRow>
-      <span className="w-28">Fecha</span>
-      <span className="w-28">Horario</span>
-      <span className="w-14">Horas</span>
-      <span className="flex-1">Actividad</span>
-      <span className="w-32">Estado</span>
-      <span className="w-44 text-right">Revisión</span>
-    </LedgerHeaderRow>
-  )
-}
 
 interface ReviewActionsProps {
   log: LocalHourLog
@@ -102,17 +83,8 @@ function ReviewList({ logs, actionState, onApprove, onReject }: ReviewListProps)
   }
 
   return (
-    <Ledger header={<LedgerColumnHeader />}>
-      {logs
-        .slice()
-        .reverse()
-        .map((log) => (
-          <LedgerRow key={log.id} syncState={log.syncState}>
-            <span className="font-data text-14 text-ink sm:w-28">{formatDate(log.date)}</span>
-            <span className="font-data text-13 text-inkSoft sm:w-28">
-              {log.startTime}–{log.endTime}
-            </span>
-            <span className="font-data text-14 text-ink sm:w-14">{log.hours}</span>
+    <HourLedger logs={logs} renderRest={(log) => (
+      <>
             <span className="flex-1 text-14 text-inkBody">{log.activity}</span>
             <span className="sm:w-32">
               <StatusBadge status={log.status} />
@@ -125,9 +97,8 @@ function ReviewList({ logs, actionState, onApprove, onReject }: ReviewListProps)
                 onReject={onReject}
               />
             </span>
-          </LedgerRow>
-        ))}
-    </Ledger>
+      </>
+    )} />
   )
 }
 
@@ -163,7 +134,7 @@ function RejectDialog({ log, onCancel, onConfirm }: RejectDialogProps) {
   }
 
   function appendReason(reason: string) {
-    setNote((prev) => (prev ? `${prev.replace(/\s*$/, '')} ${reason}. ` : `${reason}. `))
+    setNote((prev) => (prev ? `${prev.trimEnd()} ${reason}. ` : `${reason}. `))
     setError(null)
   }
 
@@ -250,10 +221,7 @@ export function ReviewHoursPage() {
   const { id } = useParams<{ id: string }>()
   const placementId = Number(id)
 
-  const placement = useLiveQuery<LocalPlacement | null | undefined>(async () => {
-    const found = await db.placements.get(placementId)
-    return found ?? null
-  }, [placementId])
+  const placement = usePlacementById(placementId)
 
   const logs = useLiveQuery<LocalHourLog[] | undefined>(
     () => db.hourLogs.where('placementId').equals(placementId).sortBy('date'),

@@ -103,12 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (timer.current) clearTimeout(timer.current)
     timer.current = null
     try {
-      await db.transaction('rw', db.tables, async () => {
-        await Promise.all(db.tables.map((table) => table.clear()))
-      })
+      await clearLocalData()
     } finally {
-      localStorage.clear()
-      sessionStorage.clear()
       sessionStorage.setItem(LOGIN_MESSAGE_KEY, message)
       setUser(null)
       navigate('/login', { replace: true })

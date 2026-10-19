@@ -66,6 +66,49 @@ function computeDurationLabel(startTime: string, endTime: string): string | null
   return `Duración calculada: ${diffHours.toFixed(1)} h`
 }
 
+/** Mensaje de error bajo un campo del formulario; no renderiza nada si no hay error. */
+function FieldError({ id, message }: { id: string; message: string | undefined }) {
+  if (!message) return null
+  return (
+    <p id={id} role="alert" className="text-12 text-void">
+      {message}
+    </p>
+  )
+}
+
+interface FormDraft {
+  date: string
+  startTime: string
+  endTime: string
+  hours: string
+  activity: string
+}
+
+/** Errores que bloquean el envío: campos obligatorios y la regla de horas (D-06). */
+function buildFormErrors(draft: FormDraft): FormErrors {
+  const nextErrors: FormErrors = {}
+
+  if (!draft.date) {
+    nextErrors.date = 'La fecha es obligatoria'
+  }
+  if (!draft.startTime) {
+    nextErrors.startTime = 'La hora de inicio es obligatoria'
+  }
+  if (!draft.endTime) {
+    nextErrors.endTime = 'La hora de fin es obligatoria'
+  }
+  if (!draft.activity.trim()) {
+    nextErrors.activity = 'Describe la actividad realizada'
+  }
+
+  const hoursMessage = hourLogFieldsError(draft.hours, draft.startTime, draft.endTime)
+  if (hoursMessage) {
+    nextErrors.hours = hoursMessage
+  }
+
+  return nextErrors
+}
+
 export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
   const [date, setDate] = useState(todayAsInputValue())
   const [startTime, setStartTime] = useState('')
@@ -89,35 +132,11 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
     setErrors({})
   }
 
-  function buildErrors(): FormErrors {
-    const nextErrors: FormErrors = {}
-
-    if (!date) {
-      nextErrors.date = 'La fecha es obligatoria'
-    }
-    if (!startTime) {
-      nextErrors.startTime = 'La hora de inicio es obligatoria'
-    }
-    if (!endTime) {
-      nextErrors.endTime = 'La hora de fin es obligatoria'
-    }
-    if (!activity.trim()) {
-      nextErrors.activity = 'Describe la actividad realizada'
-    }
-
-    const hoursMessage = hourLogFieldsError(hours, startTime, endTime)
-    if (hoursMessage) {
-      nextErrors.hours = hoursMessage
-    }
-
-    return nextErrors
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitError(null)
 
-    const nextErrors = buildErrors()
+    const nextErrors = buildFormErrors({ date, startTime, endTime, hours, activity })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       return
@@ -204,11 +223,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
         {confirmationLabel ? (
           <p className="font-data text-12 text-inkSoft">{confirmationLabel}</p>
         ) : null}
-        {errors.date ? (
-          <p id="hourlog-date-error" role="alert" className="text-12 text-void">
-            {errors.date}
-          </p>
-        ) : null}
+        <FieldError id="hourlog-date-error" message={errors.date} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -223,11 +238,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
             aria-describedby={errors.startTime ? 'hourlog-start-error' : undefined}
             className="font-data"
           />
-          {errors.startTime ? (
-            <p id="hourlog-start-error" role="alert" className="text-12 text-void">
-              {errors.startTime}
-            </p>
-          ) : null}
+          <FieldError id="hourlog-start-error" message={errors.startTime} />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -241,11 +252,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
             aria-describedby={errors.endTime ? 'hourlog-end-error' : undefined}
             className="font-data"
           />
-          {errors.endTime ? (
-            <p id="hourlog-end-error" role="alert" className="text-12 text-void">
-              {errors.endTime}
-            </p>
-          ) : null}
+          <FieldError id="hourlog-end-error" message={errors.endTime} />
         </div>
       </div>
 
@@ -269,11 +276,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
         {liveHoursWarning && !errors.hours ? (
           <p className="text-12 text-pending">{liveHoursWarning}</p>
         ) : null}
-        {errors.hours ? (
-          <p id="hourlog-hours-error" role="alert" className="text-12 text-void">
-            {errors.hours}
-          </p>
-        ) : null}
+        <FieldError id="hourlog-hours-error" message={errors.hours} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -287,11 +290,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
           rows={3}
           placeholder="Qué hiciste durante este bloque de horas"
         />
-        {errors.activity ? (
-          <p id="hourlog-activity-error" role="alert" className="text-12 text-void">
-            {errors.activity}
-          </p>
-        ) : null}
+        <FieldError id="hourlog-activity-error" message={errors.activity} />
       </div>
 
       {submitError ? (

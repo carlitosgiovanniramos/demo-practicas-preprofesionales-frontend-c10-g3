@@ -14,13 +14,7 @@ import {
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Ledger } from '@/components/ledger/Ledger'
-import { parseLocalDate } from '@/lib/date'
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
+import { formatDate } from '@/lib/date'
 
 function ColumnHeader() {
   return (
@@ -69,11 +63,26 @@ export function MyApplicationsPage() {
           ) : undefined
         }
       >
-        {error ? (
+        <ApplicationsBody applications={applications} error={error} />
+      </Panel>
+    </>
+  )
+}
+
+
+function ApplicationsBody({ applications, error }: { applications: Application[] | undefined; error: string | null }) {
+  if (error) {
+    return (
           <ErrorState>{error}</ErrorState>
-        ) : applications === undefined ? (
+        )
+  }
+  if (applications === undefined) {
+    return (
           <LoadingState>Cargando postulaciones…</LoadingState>
-        ) : applications.length === 0 ? (
+        )
+  }
+  if (applications.length === 0) {
+    return (
           <EmptyState
             title="Todavía no has postulado a ninguna oferta"
             description="Mirá las ofertas abiertas y postulá a la que te sirva."
@@ -83,7 +92,9 @@ export function MyApplicationsPage() {
               </Button>
             }
           />
-        ) : (
+        )
+  }
+  return (
           <Ledger header={<ColumnHeader />}>
             {applications.map((application) => (
               <Link key={application.id} to={`/ofertas/${application.offerId}`} className={rowClass}>
@@ -101,9 +112,5 @@ export function MyApplicationsPage() {
                 </span>
               </Link>
             ))}
-          </Ledger>
-        )}
-      </Panel>
-    </>
-  )
+          </Ledger>)
 }
