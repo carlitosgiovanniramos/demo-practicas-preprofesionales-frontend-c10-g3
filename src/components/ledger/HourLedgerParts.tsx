@@ -4,8 +4,15 @@ import { formatDate } from '@/lib/date'
 import { Ledger, LedgerHeaderRow } from './Ledger'
 import { LedgerRow } from './LedgerRow'
 
-/** Encabezado del libro de horas. `statusRight` alinea la columna Estado a la derecha. */
-export function HourLedgerColumnHeader({ statusRight = false }: { statusRight?: boolean }) {
+interface HourLedgerColumnHeaderProps {
+  /** Alinea la columna Estado a la derecha. */
+  statusRight?: boolean
+  /** Agrega una columna final de acciones (vista del tutor), después de las cinco compartidas. */
+  actionsLabel?: string
+}
+
+/** Encabezado del libro de horas. `actionsLabel` agrega la columna de acciones de la vista del tutor. */
+export function HourLedgerColumnHeader({ statusRight = false, actionsLabel }: HourLedgerColumnHeaderProps) {
   return (
     <LedgerHeaderRow>
       <span className="w-28">Fecha</span>
@@ -13,6 +20,7 @@ export function HourLedgerColumnHeader({ statusRight = false }: { statusRight?: 
       <span className="w-14">Horas</span>
       <span className="flex-1">Actividad</span>
       <span className={statusRight ? 'w-32 text-right' : 'w-32'}>Estado</span>
+      {actionsLabel ? <span className="w-44 text-right">{actionsLabel}</span> : null}
     </LedgerHeaderRow>
   )
 }
@@ -40,14 +48,16 @@ export function HourLedgerMeasures({ date, startTime, endTime, hours }: HourLedg
 interface HourLedgerProps {
   logs: LocalHourLog[]
   statusRight?: boolean
+  /** Etiqueta de la columna de acciones; sin ella el encabezado tiene solo las cinco columnas compartidas. */
+  actionsLabel?: string
   /** Celdas de la fila después de fecha, horario y horas (actividad, estado y acciones). */
   renderRest: (log: LocalHourLog) => ReactNode
 }
 
 /** Libro de horas: las más recientes primero, con la misma estructura en todas las pantallas. */
-export function HourLedger({ logs, statusRight = false, renderRest }: HourLedgerProps) {
+export function HourLedger({ logs, statusRight = false, actionsLabel, renderRest }: HourLedgerProps) {
   return (
-    <Ledger header={<HourLedgerColumnHeader statusRight={statusRight} />}>
+    <Ledger header={<HourLedgerColumnHeader statusRight={statusRight} actionsLabel={actionsLabel} />}>
       {logs
         .slice()
         .reverse()

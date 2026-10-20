@@ -83,7 +83,7 @@ function ReviewList({ logs, actionState, onApprove, onReject }: ReviewListProps)
   }
 
   return (
-    <HourLedger logs={logs} renderRest={(log) => (
+    <HourLedger logs={logs} actionsLabel="Revisión" renderRest={(log) => (
       <>
             <span className="flex-1 text-14 text-inkBody">{log.activity}</span>
             <span className="sm:w-32">

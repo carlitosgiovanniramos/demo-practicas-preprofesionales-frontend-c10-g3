@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest'
 import type { LocalHourLog } from '@/offline/db'
 import { HourLedger, HourLedgerColumnHeader, HourLedgerMeasures } from './HourLedgerParts'
 
+/** Textos de las cabeceras visibles, en orden (ignora el separador vacío). */
+const headerLabels = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('span'))
+    .map((node) => node.textContent)
+    .filter((text) => text !== '')
+
 const log = {
   id: 1,
   date: '2026-03-02',
@@ -20,6 +26,18 @@ describe('HourLedgerColumnHeader', () => {
 
     rerender(<HourLedgerColumnHeader statusRight />)
     expect(screen.getByText('Estado').className).toContain('text-right')
+  })
+
+  it('keeps the student five columns when no actions label is given', () => {
+    const { container } = render(<HourLedgerColumnHeader />)
+
+    expect(headerLabels(container)).toEqual(['Fecha', 'Horario', 'Horas', 'Actividad', 'Estado'])
+  })
+
+  it('adds the tutor actions column after the five shared columns when asked', () => {
+    const { container } = render(<HourLedgerColumnHeader actionsLabel="Revisión" />)
+
+    expect(headerLabels(container)).toEqual(['Fecha', 'Horario', 'Horas', 'Actividad', 'Estado', 'Revisión'])
   })
 })
 
@@ -42,5 +60,17 @@ describe('HourLedger', () => {
 
     const activities = screen.getAllByText(/Primera|Segunda/).map((node) => node.textContent)
     expect(activities).toEqual(['Segunda', 'Primera'])
+  })
+
+  it('shows the actions header when the ledger is given an actions label', () => {
+    render(
+      <HourLedger
+        logs={[log]}
+        actionsLabel="Revisión"
+        renderRest={() => <span>acciones</span>}
+      />,
+    )
+
+    expect(screen.getByText('Revisión')).toBeTruthy()
   })
 })
