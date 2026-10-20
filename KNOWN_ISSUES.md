@@ -5,18 +5,14 @@ Lo que sabemos que está mal y no alcanzamos a arreglar antes de entregar esto.
 Si encuentras algo que no está acá, agrégalo. Casi seguro hay más. No tuvimos tiempo de
 auditar todo el repo, solo de anotar lo que nos mordió mientras construíamos.
 
-## D-06 · La validación de horas está en tres lados
+## D-06 · La validación de horas estaba en tres lados — RESUELTO en el front
 
-`src/components/HourLogForm.tsx` (este repo), más `src/hour-log/dto/create-hour-log.dto.ts`
-y `src/hour-log/hour-log.service.ts` en el backend.
+La regla vive en `src/lib/hour-log-rules.ts` (`HOUR_LOG_LIMITS`: 0.5 a 8 horas por registro),
+espejo de `src/hour-log/hour-log.rules.ts` del backend. El formulario usa esa única función para
+el aviso en vivo y para el envío; las dos copias anteriores (`validateHoursOnSubmit` y
+`validateHoursLive`) se eliminaron. El valor lo confirmó la coordinación de vinculación.
 
-Y encima, en el frontend está duplicada dos veces sobre sí misma: `validateHoursOnSubmit` y
-`validateHoursLive` son la misma regla copiada a mano, una para cuando se envía el
-formulario y otra para el aviso que aparece mientras el estudiante todavía está escribiendo.
-Acá el tope es 8 horas. El DTO del backend permite hasta 12. El servicio del backend corta
-en 10. Tres números para la misma regla de negocio y ninguno coincide con los otros dos.
-Nadie recuerda cuál es el correcto. Probablemente ninguno. Hay que preguntarle a alguien de
-la unidad de vinculación cuántas horas se pueden registrar por día antes de tocar esto.
+Tests: `src/lib/hour-log-rules.spec.ts` y `src/components/HourLogForm.spec.tsx`.
 
 ## D-09 · `HourLogForm.tsx` hace de todo
 
