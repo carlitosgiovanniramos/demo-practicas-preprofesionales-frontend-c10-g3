@@ -17,6 +17,7 @@ import { usePlacement } from '@/offline/hooks/usePlacement'
 import { usePlacementDocuments } from '@/offline/hooks/usePlacementDocuments'
 import { HourLedgerMeasures } from '@/components/ledger/HourLedgerParts'
 import { WeeklySummaryPanel } from '@/components/ai/WeeklySummaryPanel'
+import { ActionPlanPanel } from '@/components/ai/ActionPlanPanel'
 
 function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -243,6 +244,8 @@ export function MyPlacementPage() {
           </DataRow>
         </dl>
       </Section>
+
+      <ActionPlanPanel placementId={placement.id} />
 
       <WeeklySummaryPanel placementId={placement.id} />
 

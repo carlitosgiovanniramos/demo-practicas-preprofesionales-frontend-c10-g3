@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from './client'
-import { accreditationExplanation, weeklySummary } from './ai'
+import { draftActionPlan, getActionPlan, saveActionPlan, weeklySummary } from './ai'
 
 vi.mock('./client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./client')>()
@@ -16,9 +16,24 @@ describe('ai api', () => {
     expect(api).toHaveBeenCalledWith('/placements/7/weekly-summary?weekStart=2026-04-06')
   })
 
-  it('pide la explicación de acreditación con el placement y el periodo', async () => {
+  it('lee el plan de acción del placement', async () => {
+    vi.mocked(api).mockResolvedValue(null)
+    await getActionPlan(7)
+    expect(api).toHaveBeenCalledWith('/placements/7/action-plan')
+  })
+
+  it('guarda el plan con PUT y el contenido en el cuerpo', async () => {
     vi.mocked(api).mockResolvedValue({})
-    await accreditationExplanation(7, '2026-2')
-    expect(api).toHaveBeenCalledWith('/placements/7/accreditation-explanation?period=2026-2')
+    await saveActionPlan(7, 'Plan')
+    expect(api).toHaveBeenCalledWith('/placements/7/action-plan', {
+      method: 'PUT',
+      body: JSON.stringify({ content: 'Plan' }),
+    })
+  })
+
+  it('pide el borrador del plan con POST y el periodo', async () => {
+    vi.mocked(api).mockResolvedValue({ draft: '' })
+    await draftActionPlan(7, '2026-2')
+    expect(api).toHaveBeenCalledWith('/placements/7/action-plan/draft?period=2026-2', { method: 'POST' })
   })
 })

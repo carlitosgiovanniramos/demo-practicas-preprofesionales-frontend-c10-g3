@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type AccreditationRow, reportForPeriod } from '@/api/accreditation'
 import { ApiError } from '@/api/client'
-import { AccreditationExplanation } from '@/components/ai/AccreditationExplanation'
+import { ActionPlanEditor } from '@/components/ai/ActionPlanEditor'
 import { FilterTabs } from '@/components/FilterTabs'
 import { PageHeader } from '@/components/PageHeader'
 import { AsyncSection, EmptyState, Panel, TableHeaderRow, rowClass } from '@/components/Panel'
@@ -71,7 +71,7 @@ function AccreditationRowItem({ row, period }: { row: AccreditationRow; period: 
         {row.reasons.length > 0 ? row.reasons.join(' · ') : '—'}
       </span>
     </div>
-    <AccreditationExplanation placementId={row.placementId} period={period} />
+    <ActionPlanEditor placementId={row.placementId} period={period} />
     </>
   )
 }
