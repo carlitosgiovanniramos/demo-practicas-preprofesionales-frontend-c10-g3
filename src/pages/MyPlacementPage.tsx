@@ -16,6 +16,7 @@ import { useHourLogs } from '@/offline/hooks/useHourLogs'
 import { usePlacement } from '@/offline/hooks/usePlacement'
 import { usePlacementDocuments } from '@/offline/hooks/usePlacementDocuments'
 import { HourLedgerMeasures } from '@/components/ledger/HourLedgerParts'
+import { WeeklySummaryPanel } from '@/components/ai/WeeklySummaryPanel'
 
 function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -242,6 +243,8 @@ export function MyPlacementPage() {
           </DataRow>
         </dl>
       </Section>
+
+      <WeeklySummaryPanel placementId={placement.id} />
 
       <PendingDocuments documents={documents} />
 
