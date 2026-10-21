@@ -14,32 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Ledger, LedgerHeaderRow } from '@/components/ledger/Ledger'
-import { LedgerRow } from '@/components/ledger/LedgerRow'
-import { parseLocalDate } from '@/lib/date'
 import { type HoursSummary, summarizeHours } from '@/lib/hours'
 import { plural } from '@/lib/utils'
 import type { LocalHourLog } from '@/offline/db'
 import { useHourLogs } from '@/offline/hooks/useHourLogs'
 import { usePlacement } from '@/offline/hooks/usePlacement'
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function LedgerColumnHeader() {
-  return (
-    <LedgerHeaderRow>
-      <span className="w-28">Fecha</span>
-      <span className="w-28">Horario</span>
-      <span className="w-14">Horas</span>
-      <span className="flex-1">Actividad</span>
-      <span className="w-32 text-right">Estado</span>
-    </LedgerHeaderRow>
-  )
-}
+import { HourLedger } from '@/components/ledger/HourLedgerParts'
 
 function submittedNote(hours: HoursSummary) {
   if (hours.submittedHours <= 0) return null
@@ -65,17 +45,8 @@ function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
   }
 
   return (
-    <Ledger header={<LedgerColumnHeader />}>
-      {logs
-        .slice()
-        .reverse()
-        .map((log) => (
-          <LedgerRow key={log.id} syncState={log.syncState}>
-            <span className="font-data text-14 text-ink sm:w-28">{formatDate(log.date)}</span>
-            <span className="font-data text-13 text-inkSoft sm:w-28">
-              {log.startTime}–{log.endTime}
-            </span>
-            <span className="font-data text-14 text-ink sm:w-14">{log.hours}</span>
+    <HourLedger logs={logs} statusRight renderRest={(log) => (
+      <>
             <span className="flex-1 text-14 text-inkBody">
               {log.activity}
               <SyncNote note={log.syncNote} />
@@ -83,9 +54,8 @@ function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
             <span className="sm:w-32 sm:text-right">
               <StatusBadge status={log.status} />
             </span>
-          </LedgerRow>
-        ))}
-    </Ledger>
+      </>
+    )} />
   )
 }
 

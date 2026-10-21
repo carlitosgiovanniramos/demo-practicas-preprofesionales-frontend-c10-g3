@@ -1,5 +1,4 @@
 import { type FormEvent, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { submitEvaluation } from '@/api/evaluations'
@@ -10,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { parseLocalDate } from '@/lib/date'
-import { db, type LocalPlacement } from '@/offline/db'
+import { usePlacementById } from '@/offline/hooks/usePlacementById'
+import { FormAlert } from '@/components/FormAlert'
 
 type ScoreField = 'technical' | 'communication' | 'punctuality'
 
@@ -41,10 +41,7 @@ export function EvaluatePage() {
   const { id } = useParams<{ id: string }>()
   const placementId = Number(id)
 
-  const placement = useLiveQuery<LocalPlacement | null | undefined>(async () => {
-    const found = await db.placements.get(placementId)
-    return found ?? null
-  }, [placementId])
+  const placement = usePlacementById(placementId)
 
   const [scores, setScores] = useState<Record<ScoreField, string>>({
     technical: '',
@@ -172,11 +169,7 @@ export function EvaluatePage() {
               />
             </div>
 
-            {submitError ? (
-              <p role="alert" className="rounded-md bg-chipVoid px-3 py-2.5 text-13 text-void">
-                {submitError}
-              </p>
-            ) : null}
+            <FormAlert message={submitError} />
 
             <Button type="submit" disabled={submitting} className="self-start">
               {submitting ? 'Enviando…' : 'Enviar evaluación'}

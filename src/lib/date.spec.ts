@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { parseLocalDate } from './date'
+import { formatDate, formatPeriod, parseLocalDate } from './date'
+
+// Caracterización: formatDate y formatPeriod se comparten entre páginas (antes eran copias).
+describe('formatDate and formatPeriod', () => {
+  it('formats a valid ISO date in short Spanish form', () => {
+    expect(formatDate('2026-03-02')).toBe(new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(2026, 2, 2)))
+  })
+
+  it('returns the original text when the date is invalid', () => {
+    expect(formatDate('no-es-fecha')).toBe('no-es-fecha')
+  })
+
+  it('joins a period with an en dash', () => {
+    expect(formatPeriod('2026-03-02', '2026-06-30')).toBe(`${formatDate('2026-03-02')} – ${formatDate('2026-06-30')}`)
+  })
+})
 
 describe('parseLocalDate', () => {
   it('parses a date-only ISO string as local midnight, not UTC midnight', () => {

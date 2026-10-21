@@ -2,29 +2,22 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { type Application, apply, listMine } from '@/api/applications'
 import { ApiError } from '@/api/client'
-import { type Offer, getOffer } from '@/api/offers'
+import { type Offer } from '@/api/offers'
 import { Tag } from '@/components/Chip'
 import { PageHeader } from '@/components/PageHeader'
-import { LoadingState, Panel, Section } from '@/components/Panel'
+import { LoadingState, Section } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { parseLocalDate } from '@/lib/date'
+import { formatDate, formatPeriod } from '@/lib/date'
 import { plural } from '@/lib/utils'
+import { loadOfferInto } from '@/lib/offer-loader'
+import { OfferLoadError } from '@/components/OfferLoadError'
+import { FormAlert } from '@/components/FormAlert'
 
 // El DTO del backend exige @MinLength(20) en la motivación.
 const MIN_MOTIVATION_LENGTH = 20
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function formatPeriod(periodStart: string, periodEnd: string): string {
-  return `${formatDate(periodStart)} – ${formatDate(periodEnd)}`
-}
 
 function BackLink() {
   return (
@@ -102,16 +95,7 @@ export function OfferDetailPage() {
   useEffect(() => {
     let cancelled = false
 
-    getOffer(offerId)
-      .then((data) => {
-        if (!cancelled) setOffer(data)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setOffer(null)
-          setLoadError(err instanceof ApiError ? err.message : 'No se pudo cargar la oferta')
-        }
-      })
+    loadOfferInto(offerId, () => cancelled, setOffer, setLoadError)
 
     listMine()
       .then((applications) => {
@@ -152,16 +136,7 @@ export function OfferDetailPage() {
   }
 
   if (loadError) {
-    return (
-      <>
-        <BackLink />
-        <Panel>
-          <p role="alert" className="px-5 py-14 text-center text-14 text-void">
-            {loadError}
-          </p>
-        </Panel>
-      </>
-    )
+    return <OfferLoadError message={loadError} backLink={<BackLink />} />
   }
 
   if (offer === undefined) {
@@ -233,11 +208,7 @@ export function OfferDetailPage() {
               ) : null}
             </div>
 
-            {submitError ? (
-              <p role="alert" className="rounded-md bg-chipVoid px-3 py-2.5 text-13 text-void">
-                {submitError}
-              </p>
-            ) : null}
+            <FormAlert message={submitError} />
 
             <Button type="submit" disabled={submitting} className="self-start">
               {submitting ? 'Enviando…' : 'Enviar postulación'}

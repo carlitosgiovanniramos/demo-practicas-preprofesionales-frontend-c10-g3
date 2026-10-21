@@ -7,21 +7,17 @@ import {
   listApplicationsForOffer,
 } from '@/api/companies'
 import { ApiError } from '@/api/client'
-import { type Offer, getOffer } from '@/api/offers'
+import { type Offer } from '@/api/offers'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState, LoadingState, Panel, TableHeaderRow, rowClass } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Ledger } from '@/components/ledger/Ledger'
-import { parseLocalDate } from '@/lib/date'
+import { formatDate } from '@/lib/date'
+import { loadOfferInto } from '@/lib/offer-loader'
+import { OfferLoadError } from '@/components/OfferLoadError'
 
 type DecisionState = 'interviewing' | 'accepting' | 'rejecting' | null
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
 
 function acceptedCount(applications: OfferApplication[]): number {
   return applications.filter((application) => application.status === 'ACCEPTED').length
@@ -76,16 +72,7 @@ export function OfferApplicationsPage() {
 
   useEffect(() => {
     let cancelled = false
-    getOffer(offerId)
-      .then((data) => {
-        if (!cancelled) setOffer(data)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setOffer(null)
-          setLoadError(err instanceof ApiError ? err.message : 'No se pudo cargar la oferta')
-        }
-      })
+    loadOfferInto(offerId, () => cancelled, setOffer, setLoadError)
     listApplicationsForOffer(offerId)
       .then((data) => {
         if (!cancelled) setApplications(data)
@@ -114,16 +101,7 @@ export function OfferApplicationsPage() {
   }
 
   if (loadError) {
-    return (
-      <>
-        <BackLink />
-        <Panel>
-          <p role="alert" className="px-5 py-14 text-center text-14 text-void">
-            {loadError}
-          </p>
-        </Panel>
-      </>
-    )
+    return <OfferLoadError message={loadError} backLink={<BackLink />} />
   }
 
   if (offer === undefined || applications === undefined) {
