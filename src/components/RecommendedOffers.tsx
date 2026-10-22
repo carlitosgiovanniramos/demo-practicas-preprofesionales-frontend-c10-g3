@@ -13,6 +13,8 @@ const LIMIT = 5
 /** Tiempo que cada recomendación permanece al centro antes de rotar. */
 const ROTATE_MS = 6000
 const WIDE_QUERY = '(min-width: 768px)'
+/** Evento del navegador con el que los comandos de voz mueven el carrusel: detail 1 o -1. */
+export const RECOMMENDATION_STEP_EVENT = 'recommendations:step'
 
 function matches(query: string): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches
@@ -145,6 +147,18 @@ export function RecommendedOffers() {
   // Se lee la explicación de la tarjeta que está al centro: no rota hasta que el usuario cambie de tarjeta.
   const readingActive = shownId !== null && items?.[active]?.id === shownId
   const rotating = !paused && !hovered && !keyboardFocus && !readingActive && count > 1
+
+  // Comandos de voz: avanzan o retroceden la tarjeta como las flechas.
+  useEffect(() => {
+    if (count < 2) return
+    const onStep = (event: Event) => {
+      const delta: 1 | -1 = (event as CustomEvent<number>).detail === -1 ? -1 : 1
+      setDirection(delta)
+      setActive((current) => (current + delta + count) % count)
+    }
+    window.addEventListener(RECOMMENDATION_STEP_EVENT, onStep)
+    return () => window.removeEventListener(RECOMMENDATION_STEP_EVENT, onStep)
+  }, [count])
 
   // El temporizador se reinicia en cada cambio de tarjeta: cada una dura ROTATE_MS completos.
   useEffect(() => {

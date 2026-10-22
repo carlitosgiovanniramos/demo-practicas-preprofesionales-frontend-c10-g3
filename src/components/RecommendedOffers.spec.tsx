@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
 import { type RecommendedOffer, recommendedOffers } from '@/api/recommendations'
-import { RecommendedOffers } from './RecommendedOffers'
+import { RECOMMENDATION_STEP_EVENT, RecommendedOffers } from './RecommendedOffers'
 
 vi.mock('@/api/recommendations', () => ({ recommendedOffers: vi.fn() }))
 
@@ -62,9 +62,15 @@ async function flush() {
  * Simula un navegador con media queries: `wide` decide si la pantalla es ancha y `reduced` si el
  * sistema pide reducir animaciones (Windows con "Efectos de animación" desactivados).
  */
+function matchesQuery(query: string, wide: boolean, reduced: boolean): boolean {
+  if (query.includes('min-width')) return wide
+  if (query.includes('reduce')) return reduced
+  return false
+}
+
 function stubMatchMedia(wide: boolean, reduced = false) {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query.includes('min-width') ? wide : query.includes('reduce') ? reduced : false,
+    matches: matchesQuery(query, wide, reduced),
     media: query,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
@@ -162,6 +168,22 @@ describe('RecommendedOffers', () => {
     act(() => vi.advanceTimersByTime(ROTATE_MS))
 
     expect(screen.getByText('2 de 3')).toBeTruthy()
+  })
+
+  it('responde al evento de voz para avanzar o retroceder', async () => {
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await screen.findByText('1 de 3')
+    act(() => {
+      window.dispatchEvent(new CustomEvent(RECOMMENDATION_STEP_EVENT, { detail: 1 }))
+    })
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(RECOMMENDATION_STEP_EVENT, { detail: -1 }))
+    })
+    expect(screen.getByText('1 de 3')).toBeTruthy()
   })
 
   it('una flecha no detiene la rotación: la tarjeta elegida dura su tiempo y luego sigue', async () => {
