@@ -162,13 +162,19 @@ describe('useVoiceCommands', () => {
     vi.useRealTimers()
   })
 
-  it('recuerda la preferencia de manos libres entre visitas', () => {
+  it('al cargar la página el modo manos libres empieza apagado, aunque se haya usado antes', () => {
+    localStorage.setItem('voice:handsFree', 'true')
     const { result } = renderHook(() => useVoiceCommands(getCommands))
-    act(() => result.current.toggleHandsFree())
+    expect(result.current.handsFree).toBe(false)
+  })
 
-    expect(localStorage.getItem('voice:handsFree')).toBe('true')
-    act(() => result.current.toggleHandsFree())
-    expect(localStorage.getItem('voice:handsFree')).toBe('false')
+  it('cerrar el micrófono al cambiar de pantalla no muestra ningún aviso', () => {
+    const { result } = renderHook(() => useVoiceCommands(getCommands))
+    act(() => result.current.toggle())
+
+    act(() => FakeRecognition.instances.at(-1)!.onerror?.({ error: 'aborted' }))
+
+    expect(Swal.fire).not.toHaveBeenCalled()
   })
 
   it('muestra el error del micrófono en una alerta completa, sin truncar', () => {

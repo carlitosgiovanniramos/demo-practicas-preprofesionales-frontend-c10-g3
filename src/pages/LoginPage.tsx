@@ -1,4 +1,5 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
+import { shouldShowLoginVoiceTutorial, showLoginVoiceTutorial } from '@/voice/tutorial'
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert } from '@/lib/alert'
@@ -73,6 +74,11 @@ export function LoginPage() {
   })
   const [submitting, setSubmitting] = useState(false)
 
+  // La primera vez que se abre el login, se explican los comandos de voz que sirven antes de entrar.
+  useEffect(() => {
+    if (shouldShowLoginVoiceTutorial()) showLoginVoiceTutorial()
+  }, [])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
@@ -146,6 +152,7 @@ export function LoginPage() {
                   <Input
                     {...props}
                     name="password"
+                    data-voice-kind="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}

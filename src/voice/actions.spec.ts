@@ -230,6 +230,31 @@ describe('números dictados en correos y contraseñas', () => {
     expect(field.value).toBe('hola mundo')
   })
 
+  it('una contraseña mostrada (type="text") sigue sin espacios si el campo se marca como contraseña', () => {
+    document.body.innerHTML = '<input id="p" type="text" data-voice-kind="password" />'
+    const field = document.getElementById('p') as HTMLInputElement
+    field.focus()
+
+    dictateIntoFocused('hola mundo')
+
+    expect(field.value).toBe('holamundo')
+  })
+
+  it('corrige cómo el reconocimiento escribe "miyura", "yura" y "arroba" en un correo', () => {
+    document.body.innerHTML = '<input id="e" type="email" />'
+    const field = document.getElementById('e') as HTMLInputElement
+    field.focus()
+
+    dictateIntoFocused('misura arroba uta punto edu')
+    expect(field.value).toBe('miyura@uta.edu')
+
+    dictateIntoFocused('dura arrova gmail punto com')
+    expect(field.value).toBe('yura@gmail.com')
+
+    dictateIntoFocused('mi jura a roba uta punto edu')
+    expect(field.value).toBe('miyura@uta.edu')
+  })
+
   it('en un correo, los números dictados se escriben como cifras', () => {
     document.body.innerHTML = '<input id="e" type="email" />'
     document.getElementById('e')!.focus()

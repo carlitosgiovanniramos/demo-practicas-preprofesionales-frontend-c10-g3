@@ -8,6 +8,8 @@ import { LoginPage } from './LoginPage'
 
 vi.mock('@/auth/AuthContext', () => ({ useAuth: vi.fn() }))
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }))
+// El tutorial del login se muestra una sola vez: en estas pruebas ya está visto para no tapar los avisos.
+localStorage.setItem('voice:loginTutorialSeen', 'true')
 
 const login = vi.fn()
 

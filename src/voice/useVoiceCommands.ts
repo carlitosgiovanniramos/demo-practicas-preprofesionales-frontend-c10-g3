@@ -6,9 +6,8 @@ import { matchVoice, normalizeSpeech, type VoiceCommand } from './commands'
 /** Idioma del reconocimiento. Cambiar aquí si el usuario habla otra variante del español. */
 export const VOICE_LANG = 'es-MX'
 
-/** En modo manos libres, cada orden empieza con esta palabra; lo demás se ignora. */
+/** La palabra de activación es opcional: "asistente ofertas" y "ofertas" hacen lo mismo. */
 export const WAKE_WORD = 'asistente'
-const HANDS_FREE_KEY = 'voice:handsFree'
 /** Pausa antes de volver a escuchar, para no reiniciar el micrófono en bucle. */
 const RESTART_DELAY_MS = 300
 
@@ -40,6 +39,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 /** Errores que impiden seguir escuchando: el modo manos libres se apaga en vez de reintentar. */
 const FATAL_ERRORS = ['not-allowed', 'service-not-allowed', 'audio-capture']
+/** Errores normales que no se avisan: el silencio y el cierre al cambiar de pantalla. */
+const SILENT_ERRORS = ['no-speech', 'aborted']
 
 const ACTION_FAILED = 'No se pudo completar esa acción en esta pantalla'
 
@@ -56,22 +57,6 @@ export function getRecognizerConstructor(): RecognizerConstructor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
-function readHandsFree(): boolean {
-  try {
-    return localStorage.getItem(HANDS_FREE_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-function saveHandsFree(value: boolean) {
-  try {
-    localStorage.setItem(HANDS_FREE_KEY, String(value))
-  } catch {
-    // Sin almacenamiento, la preferencia dura solo mientras la página está abierta.
-  }
-}
-
 /** Avisa del problema: en pantalla (toast) y en voz, para quien no puede leer la pantalla. */
 function reportFailure(message: string, title: string) {
   showErrorAlert(message, title)
@@ -80,9 +65,9 @@ function reportFailure(message: string, title: string) {
 
 /**
  * Micrófono por pulsación o manos libres. Por pulsación: escucha una frase, la ejecuta y se apaga.
- * En manos libres sigue escuchando, pero solo actúa con órdenes que empiezan por "asistente".
- * Lo que no es un comando se escribe en el campo enfocado (`fallback`). Confirma en voz y avisa
- * con un toast cuando algo falla. `getCommands` se lee al hablar, así las acciones están al día.
+ * En manos libres sigue escuchando y se reinicia solo. Lo que no es un comando se escribe en el campo
+ * enfocado (`fallback`). Confirma en voz y avisa con un toast cuando algo falla. El modo manos libres
+ * siempre empieza apagado: el micrófono no se enciende solo al cargar una página.
  */
 export function useVoiceCommands(getCommands: () => VoiceCommand[], options: VoiceOptions = {}) {
   const Constructor = getRecognizerConstructor()
@@ -90,9 +75,9 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
   const [listening, setListening] = useState(false)
   const [lastHeard, setLastHeard] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [handsFree, setHandsFree] = useState(readHandsFree)
+  const [handsFree, setHandsFree] = useState(false)
   const recognizer = useRef<Recognizer | null>(null)
-  const handsFreeRef = useRef(handsFree)
+  const handsFreeRef = useRef(false)
   const getCommandsRef = useRef(getCommands)
   const optionsRef = useRef(options)
   const startRef = useRef<() => void>(() => undefined)
@@ -109,45 +94,39 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
   const setHandsFreeValue = useCallback((value: boolean) => {
     handsFreeRef.current = value
     setHandsFree(value)
-    saveHandsFree(value)
   }, [])
 
-  const handleTranscript = useCallback(
-    (transcript: string) => {
-      // En manos libres, solo las órdenes que empiezan por la palabra de activación cuentan.
-      // La palabra de activación es opcional: "asistente ofertas" y "ofertas" hacen lo mismo.
-      let spoken = transcript.trim()
-      if (normalizeSpeech(spoken).startsWith(`${WAKE_WORD} `)) {
-        spoken = spoken.split(/\s+/).slice(1).join(' ')
-      }
-      if (!spoken) return
+  const handleTranscript = useCallback((transcript: string) => {
+    let spoken = transcript.trim()
+    if (normalizeSpeech(spoken).startsWith(`${WAKE_WORD} `)) {
+      spoken = spoken.split(/\s+/).slice(1).join(' ')
+    }
+    if (!spoken) return
 
-      setLastHeard(spoken)
-      const match = matchVoice(spoken, getCommandsRef.current())
-      if (!match) {
-        if (optionsRef.current.fallback?.(spoken)) {
-          setError(null)
-          speak('Escrito')
-          return
-        }
-        const message = `No reconocí "${spoken}". Di, por ejemplo, "ofertas" o "ayuda".`
-        setError(message)
-        reportFailure(message, 'No reconocí ese comando')
+    setLastHeard(spoken)
+    const match = matchVoice(spoken, getCommandsRef.current())
+    if (!match) {
+      if (optionsRef.current.fallback?.(spoken)) {
+        setError(null)
+        speak('Escrito')
         return
       }
+      const message = `No reconocí "${spoken}". Di, por ejemplo, "ofertas" o "ayuda".`
+      setError(message)
+      reportFailure(message, 'No reconocí ese comando')
+      return
+    }
 
-      if (match.command.run(match.argument) === false) {
-        setError(ACTION_FAILED)
-        reportFailure(ACTION_FAILED, 'No se pudo completar')
-        return
-      }
+    if (match.command.run(match.argument) === false) {
+      setError(ACTION_FAILED)
+      reportFailure(ACTION_FAILED, 'No se pudo completar')
+      return
+    }
 
-      // Éxito: solo se confirma en voz. Los avisos visuales son para los errores.
-      setError(null)
-      speak(match.command.feedback?.(match.argument) ?? 'Listo')
-    },
-    [],
-  )
+    // Éxito: solo se confirma en voz. Los avisos visuales son para los errores.
+    setError(null)
+    speak(match.command.feedback?.(match.argument) ?? 'Listo')
+  }, [])
 
   const start = useCallback(() => {
     if (!Constructor) return
@@ -157,8 +136,7 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
     instance.interimResults = false
     instance.onresult = (event) => handleTranscript(event.results[event.results.length - 1][0].transcript)
     instance.onerror = (event) => {
-      // En manos libres el silencio es normal: no se avisa, solo se vuelve a escuchar al terminar.
-      if (handsFreeRef.current && event.error === 'no-speech') return
+      if (SILENT_ERRORS.includes(event.error)) return
       const message = ERROR_MESSAGES[event.error] ?? 'No se pudo usar el micrófono'
       setError(message)
       reportFailure(message, 'Problema con el micrófono')
@@ -180,7 +158,19 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
     startRef.current = start
   }, [start])
 
-  useEffect(() => () => recognizer.current?.abort(), [])
+  // Al salir de la pantalla se desconecta sin avisos ni reinicios.
+  useEffect(
+    () => () => {
+      handsFreeRef.current = false
+      const current = recognizer.current
+      if (!current) return
+      current.onend = null
+      current.onerror = null
+      current.onresult = null
+      current.abort()
+    },
+    [],
+  )
 
   /** Tecla o botón: enciende, o apaga y también sale del modo manos libres. */
   const toggle = useCallback(() => {

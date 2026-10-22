@@ -1,12 +1,33 @@
 import Swal from 'sweetalert2'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { markVoiceTutorialShown, showVoiceTutorial, shouldShowVoiceTutorial } from './tutorial'
+import {
+  markVoiceTutorialShown,
+  shouldShowLoginVoiceTutorial,
+  showLoginVoiceTutorial,
+  showVoiceTutorial,
+  shouldShowVoiceTutorial,
+} from './tutorial'
 
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn(() => Promise.resolve({ isConfirmed: true })) } }))
 
 beforeEach(() => {
   sessionStorage.clear()
   vi.clearAllMocks()
+})
+
+describe('login voice tutorial', () => {
+  it('se muestra una sola vez al abrir el login, con los comandos de sesión y de contraseña', async () => {
+    localStorage.clear()
+    expect(shouldShowLoginVoiceTutorial()).toBe(true)
+
+    await showLoginVoiceTutorial()
+
+    const options = vi.mocked(Swal.fire).mock.calls[0][0] as unknown as { html: string }
+    for (const example of ['iniciar sesión', 'correo', 'contraseña', 'visibilizar', 'ocultar', 'espacio']) {
+      expect(options.html).toContain(example)
+    }
+    expect(shouldShowLoginVoiceTutorial()).toBe(false)
+  })
 })
 
 describe('voice tutorial', () => {

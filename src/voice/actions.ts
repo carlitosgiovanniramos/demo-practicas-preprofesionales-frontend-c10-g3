@@ -50,7 +50,15 @@ function toIsoDate(text: string): string | null {
  * la fecha AAAA-MM-DD y un número solo dígitos. Lo demás se escribe tal cual.
  */
 /** "ana arroba uta punto edu" → "ana@uta.edu": un correo no lleva espacios ni se dicta con símbolos. */
-const SPOKEN_SYMBOLS: Record<string, string> = { arroba: '@', punto: '.' }
+/** Símbolos de un correo dictado, con las variantes que el reconocimiento suele escribir. */
+const SPOKEN_SYMBOLS: Record<string, string> = {
+  arroba: '@', arrova: '@', arrobas: '@', arroa: '@', punto: '.', puntos: '.', guion: '-', guión: '-',
+}
+
+/** Palabras del correo que el reconocimiento escribe mal: "misura" o "dura" en vez de "miyura" o "yura". */
+const EMAIL_WORDS: Record<string, string> = {
+  misura: 'miyura', midura: 'miyura', mijura: 'miyura', mimura: 'miyura', dura: 'yura', jura: 'yura',
+}
 
 /** Números de 0 a 29 dichos en una palabra (sin tildes, como los devuelve normalizeSpeech). */
 const SPOKEN_UNITS: Record<string, number> = {
@@ -101,10 +109,14 @@ function spokenPassword(text: string): string {
 }
 
 function spokenEmail(text: string): string {
-  return numberWordsToDigits(text)
+  const corrected = text
+    .toLowerCase()
+    .replace(/\ba roba\b/g, 'arroba')
+    .replace(/\bmi (yura|jura|dura)\b/g, 'miyura')
+  return numberWordsToDigits(corrected)
     .toLowerCase()
     .split(/\s+/)
-    .map((word) => SPOKEN_SYMBOLS[word] ?? word)
+    .map((word) => SPOKEN_SYMBOLS[word] ?? EMAIL_WORDS[word] ?? word)
     .join('')
 }
 
@@ -112,7 +124,8 @@ function toFieldValue(field: TextField, spoken: string): string {
   const text = spoken.trim()
   if (!(field instanceof HTMLInputElement)) return text
   if (field.type === 'email') return spokenEmail(text)
-  if (field.type === 'password') return spokenPassword(text)
+  // Una contraseña se reconoce también cuando se muestra (type="text") por su marca data-voice-kind.
+  if (field.type === 'password' || field.dataset.voiceKind === 'password') return spokenPassword(text)
   if (field.type === 'time') return toTime(text) ?? text
   if (field.type === 'date') return toIsoDate(text) ?? text
   if (field.type === 'number') return text.replace(',', '.').match(/-?\d+(\.\d+)?/)?.[0] ?? text

@@ -108,7 +108,7 @@ export function VoiceCommandButton({ getCommands, fallback, variant = 'inline' }
     )
   }
 
-  const status = voice.handsFree ? 'Manos libres: escuchando' : statusText(voice)
+  const status = voice.handsFree && voice.listening ? 'Manos libres: escuchando' : statusText(voice)
   const micLabel = listening ? 'Dejar de escuchar' : 'Activar micrófono'
   const handsFreeLabel = voice.handsFree ? 'Apagar manos libres' : 'Activar manos libres'
 
