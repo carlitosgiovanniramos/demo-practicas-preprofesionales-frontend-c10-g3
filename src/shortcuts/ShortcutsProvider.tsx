@@ -37,6 +37,8 @@ export interface ScreenShortcut {
   key: string
   /** Si es true, también actúa con una ventana abierta (p. ej. el modal de evaluación). */
   inDialog?: boolean
+  /** Frases de voz que disparan la misma acción ("aprobar", "evaluar"). Sin ellas, no es un comando de voz. */
+  voice?: string[]
   run: () => boolean | void
 }
 
@@ -44,6 +46,8 @@ interface ShortcutsContextValue {
   actions: ShortcutAction[]
   bindings: Bindings
   openHelp: () => void
+  /** Atajos de la pantalla montada ahora: los comandos de voz los leen en el momento de hablar. */
+  screenShortcuts: () => ScreenShortcut[]
   /** Asigna las teclas a una acción; devuelve el motivo si no se puede, o null si se guardó. */
   setBinding: (id: string, steps: string[]) => string | null
   resetBindings: () => void
@@ -214,9 +218,11 @@ export function ShortcutsProvider({ navPaths, role, children }: ShortcutsProvide
     setOverrides({})
   }, [])
 
+  const screenShortcuts = useCallback(() => registry.all(), [registry])
+
   const value = useMemo(
-    () => ({ actions, bindings, openHelp, setBinding, resetBindings }),
-    [actions, bindings, openHelp, setBinding, resetBindings],
+    () => ({ actions, bindings, openHelp, setBinding, resetBindings, screenShortcuts }),
+    [actions, bindings, openHelp, setBinding, resetBindings, screenShortcuts],
   )
 
   return (

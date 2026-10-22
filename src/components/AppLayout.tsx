@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Keyboard } from 'lucide-react'
 import { useAuth, type Role } from '@/auth/AuthContext'
@@ -8,7 +8,8 @@ import { RECOMMENDATION_STEP_EVENT } from '@/components/RecommendedOffers'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { ShortcutsProvider, useShortcuts } from '@/shortcuts/ShortcutsProvider'
 import { startSync } from '@/offline/sync/scheduler'
-import { buildVoiceCommands } from '@/voice/commands'
+import { searchFor, createNew, submitForm, writeText } from '@/voice/actions'
+import { buildVoiceCommands, type VoiceCommand } from '@/voice/commands'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +77,7 @@ export function AppLayout() {
 
 function AppFrame() {
   const { user, role, logout } = useAuth()
-  const { openHelp } = useShortcuts()
+  const { openHelp, screenShortcuts } = useShortcuts()
   const navigate = useNavigate()
 
   // Se llama una sola vez para toda la sesión autenticada: AppLayout envuelve
@@ -87,21 +88,31 @@ function AppFrame() {
   }, [])
 
   const navGroups = role ? NAV_BY_ROLE[role] : []
-  const voiceCommands = useMemo(
-    () =>
-      buildVoiceCommands(
-        navGroups.flatMap((group) => group.items),
-        {
-          navigate,
-          openHelp,
-          stepRecommendation: (delta) =>
-            window.dispatchEvent(new CustomEvent(RECOMMENDATION_STEP_EVENT, { detail: delta })),
-        },
-      ),
-    // navGroups depende solo del rol: se recalcula cuando cambia.
+  // Se evalúa al hablar, no al renderizar: así los comandos de la pantalla que está abierta ahora mismo.
+  const getVoiceCommands = useCallback(() => {
+    const navTargets = navGroups.flatMap((group) => group.items)
+    const base = buildVoiceCommands(navTargets, {
+      navigate,
+      openHelp,
+      stepRecommendation: (delta) =>
+        window.dispatchEvent(new CustomEvent(RECOMMENDATION_STEP_EVENT, { detail: delta })),
+      search: searchFor,
+      create: createNew,
+      submit: submitForm,
+      write: writeText,
+    })
+    const screen = screenShortcuts()
+      .filter((shortcut) => shortcut.voice && shortcut.voice.length > 0)
+      .map<VoiceCommand>((shortcut) => ({
+        id: `screen:${shortcut.id}`,
+        phrases: shortcut.voice ?? [],
+        feedback: () => shortcut.label,
+        run: () => shortcut.run() !== false,
+      }))
+    return [...base, ...screen]
+    // navGroups depende solo del rol, que ya está en las dependencias.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [role, navigate, openHelp],
-  )
+  }, [role, navigate, openHelp, screenShortcuts])
 
   return (
     <div className="flex min-h-screen flex-col bg-paper md:h-screen md:overflow-hidden">
@@ -121,7 +132,7 @@ function AppFrame() {
               <span className="block text-11 text-inkSoft">{role ? ROLE_LABEL[role] : ''}</span>
             </span>
           </div>
-          <VoiceCommandButton commands={voiceCommands} />
+          <VoiceCommandButton getCommands={getVoiceCommands} />
           <Button type="button" variant="outline" onClick={openHelp} aria-label="Ver atajos de teclado">
             <Keyboard aria-hidden="true" className="size-4" />
             <span className="hidden sm:inline">Atajos</span>

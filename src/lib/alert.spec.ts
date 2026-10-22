@@ -1,6 +1,6 @@
 import Swal from 'sweetalert2'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { showErrorAlert } from './alert'
+import { showErrorAlert, showSuccessToast } from './alert'
 
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }))
 
@@ -9,16 +9,27 @@ beforeEach(() => {
 })
 
 describe('showErrorAlert', () => {
-  it('muestra una alerta de error con el mensaje dado', () => {
+  it('muestra un aviso de error como toast en la parte superior, no como modal', () => {
     showErrorAlert('No se pudo enviar la evaluación')
 
     expect(Swal.fire).toHaveBeenCalledWith(
       expect.objectContaining({
+        toast: true,
+        position: 'top',
         icon: 'error',
         title: 'No se pudo completar la acción',
         html: 'No se pudo enviar la evaluación',
+        showConfirmButton: false,
+        showCloseButton: true,
       }),
     )
+  })
+
+  it('se queda visible el tiempo suficiente para leer un mensaje largo', () => {
+    showErrorAlert('x'.repeat(200))
+
+    const options = vi.mocked(Swal.fire).mock.calls[0][0] as unknown as { timer: number }
+    expect(options.timer).toBeGreaterThanOrEqual(8000)
   })
 
   it('escapa el HTML del mensaje para que nunca se interprete como markup', () => {
@@ -32,5 +43,15 @@ describe('showErrorAlert', () => {
     showErrorAlert('Sin conexión', 'Sin conexión')
 
     expect(vi.mocked(Swal.fire).mock.calls[0][0]).toMatchObject({ title: 'Sin conexión' })
+  })
+})
+
+describe('showSuccessToast', () => {
+  it('confirma una acción con un toast verde en la parte superior', () => {
+    showSuccessToast('Abriendo Ofertas')
+
+    expect(Swal.fire).toHaveBeenCalledWith(
+      expect.objectContaining({ toast: true, position: 'top', icon: 'success', title: 'Abriendo Ofertas' }),
+    )
   })
 })

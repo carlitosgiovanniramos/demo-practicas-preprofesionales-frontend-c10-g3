@@ -35,6 +35,8 @@ const CRITERIA: { field: ScoreField; label: string }[] = [
 ]
 
 const SCORES = [1, 2, 3, 4, 5]
+/** Cómo se dicta cada puntaje por voz: "cuatro" o "puntaje cuatro". */
+const SCORE_WORDS = ['uno', 'dos', 'tres', 'cuatro', 'cinco']
 
 // Periodo académico AAAA-1 (enero-junio) o AAAA-2 (julio-diciembre), tal
 // como lo espera el backend (ver AccreditationService.reportForPeriod). Se
@@ -150,6 +152,7 @@ function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
       label: `Poner ${score} en el criterio enfocado`,
       key: String(score),
       inDialog: true,
+      voice: [SCORE_WORDS[score - 1], `puntaje ${SCORE_WORDS[score - 1]}`],
       run: () => {
         const field = document.activeElement?.closest<HTMLElement>('[data-criterion]')?.dataset.criterion as
           | ScoreField

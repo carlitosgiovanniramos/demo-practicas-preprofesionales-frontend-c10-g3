@@ -254,23 +254,38 @@ export function ReviewHoursPage() {
       id: 'review-evaluate',
       label: 'Evaluar practicante',
       key: 'e',
+      voice: ['evaluar', 'evaluar practicante'],
       run: () => {
         setEvaluateOpen(true)
         return true
       },
     },
-    { id: 'review-next', label: 'Siguiente registro', key: 'j', run: () => moveItemFocus(1) },
-    { id: 'review-prev', label: 'Registro anterior', key: 'k', run: () => moveItemFocus(-1) },
+    {
+      id: 'review-next',
+      label: 'Siguiente registro',
+      key: 'j',
+      voice: ['siguiente registro', 'registro siguiente'],
+      run: () => moveItemFocus(1),
+    },
+    {
+      id: 'review-prev',
+      label: 'Registro anterior',
+      key: 'k',
+      voice: ['registro anterior'],
+      run: () => moveItemFocus(-1),
+    },
     {
       id: 'review-approve',
       label: 'Aprobar el registro enfocado',
       key: 'a',
+      voice: ['aprobar', 'aprobar registro'],
       run: () => activateInCurrentItem('[data-action="approve"]'),
     },
     {
       id: 'review-reject',
       label: 'Devolver el registro enfocado',
       key: 'r',
+      voice: ['devolver', 'devolver registro'],
       run: () => activateInCurrentItem('[data-action="reject"]'),
     },
   ])

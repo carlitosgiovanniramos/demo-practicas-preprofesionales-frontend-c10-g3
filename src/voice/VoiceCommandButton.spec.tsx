@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('VoiceCommandButton', () => {
   it('se muestra apagado y explica la razón cuando el navegador no tiene reconocimiento de voz', () => {
-    render(<VoiceCommandButton commands={[]} />)
+    render(<VoiceCommandButton getCommands={() => []} />)
 
     const button = screen.getByRole('button', { name: 'Comandos de voz no disponibles' })
     expect(button.hasAttribute('disabled')).toBe(true)
@@ -18,7 +18,7 @@ describe('VoiceCommandButton', () => {
   it('ofrece activar el micrófono cuando el navegador lo soporta', () => {
     vi.stubGlobal('SpeechRecognition', class {})
 
-    render(<VoiceCommandButton commands={[]} />)
+    render(<VoiceCommandButton getCommands={() => []} />)
 
     expect(screen.getByRole('button', { name: 'Activar comandos de voz' }).getAttribute('aria-pressed')).toBe('false')
   })

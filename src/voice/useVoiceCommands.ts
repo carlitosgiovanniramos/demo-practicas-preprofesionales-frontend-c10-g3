@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { showErrorAlert } from '@/lib/alert'
-import { matchCommand, type VoiceCommand } from './commands'
+import { showErrorAlert, showSuccessToast } from '@/lib/alert'
+import { speak } from '@/lib/speech'
+import { matchVoice, type VoiceCommand } from './commands'
 
 /** Idioma del reconocimiento. Cambiar aquí si el usuario habla otra variante del español. */
 export const VOICE_LANG = 'es-MX'
@@ -28,8 +29,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   'service-not-allowed': 'Permite el uso del micrófono en el navegador',
   'no-speech': 'No escuché nada, intenta de nuevo',
   'audio-capture': 'No encontré un micrófono disponible',
-  network: 'El reconocimiento de voz necesita conexión a internet',
+  network: 'El navegador no pudo conectarse al servicio de voz. Prueba con Chrome o Edge.',
 }
+
+const ACTION_FAILED = 'No se pudo completar esa acción en esta pantalla'
 
 export function getRecognizerConstructor(): RecognizerConstructor | null {
   const w = window as unknown as {
@@ -39,25 +42,54 @@ export function getRecognizerConstructor(): RecognizerConstructor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
+/** Avisa del problema: en pantalla (toast) y en voz, para quien no puede leer la pantalla. */
+function reportFailure(message: string, title: string) {
+  showErrorAlert(message, title)
+  speak(message)
+}
+
 /**
- * Micrófono por pulsación: el botón escucha una frase, ejecuta el comando que coincida y se apaga.
- * Lo que no coincide queda en `error` para que el usuario vea qué entendió el reconocedor.
+ * Micrófono por pulsación: el botón escucha una frase, ejecuta el comando que coincida (con su
+ * argumento si lo tiene) y se apaga. Confirma en voz y en pantalla, y avisa cuando algo falla.
+ * `getCommands` se lee al hablar, así las acciones de la pantalla actual siempre están al día.
  */
-export function useVoiceCommands(commands: VoiceCommand[]) {
+export function useVoiceCommands(getCommands: () => VoiceCommand[]) {
   const Constructor = getRecognizerConstructor()
   const supported = Constructor !== null
   const [listening, setListening] = useState(false)
   const [lastHeard, setLastHeard] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const recognizer = useRef<Recognizer | null>(null)
-  const commandsRef = useRef(commands)
+  const getCommandsRef = useRef(getCommands)
 
   useEffect(() => {
-    commandsRef.current = commands
+    getCommandsRef.current = getCommands
   })
 
   const stop = useCallback(() => {
     recognizer.current?.stop()
+  }, [])
+
+  const handleTranscript = useCallback((transcript: string) => {
+    setLastHeard(transcript)
+    const match = matchVoice(transcript, getCommandsRef.current())
+    if (!match) {
+      const message = `No reconocí "${transcript}". Di, por ejemplo, "ofertas" o "ayuda".`
+      setError(message)
+      reportFailure(message, 'No reconocí ese comando')
+      return
+    }
+
+    if (match.command.run(match.argument) === false) {
+      setError(ACTION_FAILED)
+      reportFailure(ACTION_FAILED, 'No se pudo completar')
+      return
+    }
+
+    const confirmation = match.command.feedback?.(match.argument) ?? 'Listo'
+    setError(null)
+    showSuccessToast(confirmation)
+    speak(confirmation)
   }, [])
 
   const start = useCallback(() => {
@@ -66,23 +98,11 @@ export function useVoiceCommands(commands: VoiceCommand[]) {
     instance.lang = VOICE_LANG
     instance.continuous = false
     instance.interimResults = false
-    instance.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript
-      setLastHeard(transcript)
-      const command = matchCommand(transcript, commandsRef.current)
-      if (command) {
-        setError(null)
-        command.run()
-      } else {
-        const message = `No reconocí "${transcript}". Di, por ejemplo, "ofertas" o "ayuda".`
-        setError(message)
-        showErrorAlert(message, 'No reconocí ese comando')
-      }
-    }
+    instance.onresult = (event) => handleTranscript(event.results[event.results.length - 1][0].transcript)
     instance.onerror = (event) => {
       const message = ERROR_MESSAGES[event.error] ?? 'No se pudo usar el micrófono'
       setError(message)
-      showErrorAlert(message, 'Problema con el micrófono')
+      reportFailure(message, 'Problema con el micrófono')
       setListening(false)
     }
     instance.onend = () => setListening(false)
@@ -90,7 +110,7 @@ export function useVoiceCommands(commands: VoiceCommand[]) {
     setError(null)
     setListening(true)
     instance.start()
-  }, [Constructor])
+  }, [Constructor, handleTranscript])
 
   useEffect(() => () => recognizer.current?.abort(), [])
 

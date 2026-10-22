@@ -4,7 +4,8 @@ import type { VoiceCommand } from './commands'
 import { useVoiceCommands } from './useVoiceCommands'
 
 interface VoiceCommandButtonProps {
-  commands: VoiceCommand[]
+  /** Lee los comandos disponibles al momento de hablar (dependen de la pantalla abierta). */
+  getCommands: () => VoiceCommand[]
 }
 
 /** Lo que se muestra junto al botón: si escucha, el error o lo último que se entendió. */
@@ -15,8 +16,8 @@ function statusText(voice: { listening: boolean; error: string | null; lastHeard
 }
 
 /** Botón de micrófono del encabezado. Sin soporte del navegador se muestra apagado con la razón. */
-export function VoiceCommandButton({ commands }: VoiceCommandButtonProps) {
-  const voice = useVoiceCommands(commands)
+export function VoiceCommandButton({ getCommands }: VoiceCommandButtonProps) {
+  const voice = useVoiceCommands(getCommands)
 
   if (!voice.supported) {
     return (
