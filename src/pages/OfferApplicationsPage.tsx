@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   type ApplicationDecision,
@@ -8,16 +8,32 @@ import {
 } from '@/api/companies'
 import { ApiError } from '@/api/client'
 import { type Offer } from '@/api/offers'
+import { FilterTabs } from '@/components/FilterTabs'
+import { Pagination } from '@/components/Pagination'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState, LoadingState, Panel, TableHeaderRow, rowClass } from '@/components/Panel'
+import { SearchField, matchesSearch } from '@/components/SearchField'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Ledger } from '@/components/ledger/Ledger'
 import { formatDate } from '@/lib/date'
 import { loadOfferInto } from '@/lib/offer-loader'
+import { usePagedItems } from '@/lib/use-paged-items'
+import { plural } from '@/lib/utils'
 import { OfferLoadError } from '@/components/OfferLoadError'
 
 type DecisionState = 'interviewing' | 'accepting' | 'rejecting' | null
+
+const ALL_STATUSES = 'TODAS'
+const PAGE_SIZE = 10
+
+const STATUS_FILTERS = [
+  { value: ALL_STATUSES, label: 'Todas' },
+  { value: 'SUBMITTED', label: 'Enviadas' },
+  { value: 'INTERVIEW', label: 'Entrevista' },
+  { value: 'ACCEPTED', label: 'Aceptadas' },
+  { value: 'REJECTED', label: 'Descartadas' },
+]
 
 function acceptedCount(applications: OfferApplication[]): number {
   return applications.filter((application) => application.status === 'ACCEPTED').length
@@ -63,6 +79,19 @@ export function OfferApplicationsPage() {
 
   const [decisionState, setDecisionState] = useState<Record<number, DecisionState>>({})
   const [decisionError, setDecisionError] = useState<string | null>(null)
+
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
+  const filtered = useMemo(() => {
+    if (!applications) return undefined
+    return applications.filter(
+      (application) =>
+        (statusFilter === ALL_STATUSES || application.status === statusFilter) &&
+        matchesSearch(application.student.fullName, query),
+    )
+  }, [applications, statusFilter, query])
+  const paged = usePagedItems(filtered, PAGE_SIZE, `${statusFilter}|${query}`)
+  const noneInFilter = paged !== undefined && paged.pageItems.length === 0 && (applications?.length ?? 0) > 0
 
   function refetchApplications() {
     return listApplicationsForOffer(offerId)
@@ -137,11 +166,24 @@ export function OfferApplicationsPage() {
       <Panel
         toolbar={
           applications.length > 0 ? (
-            <span className="ml-auto font-data text-12 text-inkSoft">
-              {applications.length === 1
-                ? '1 postulación'
-                : `${applications.length} postulaciones`}
-            </span>
+            <>
+              <SearchField
+                value={query}
+                onChange={setQuery}
+                label="Buscar estudiante"
+                placeholder="Buscar por nombre del estudiante"
+                className="sm:max-w-xs"
+              />
+              <FilterTabs
+                label="Filtrar por estado"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={STATUS_FILTERS}
+              />
+              <span className="ml-auto font-data text-12 text-inkSoft" aria-live="polite">
+                {plural(filtered?.length ?? 0, 'postulación', 'postulaciones')}
+              </span>
+            </>
           ) : undefined
         }
       >
@@ -150,9 +192,16 @@ export function OfferApplicationsPage() {
             title="Todavía nadie postuló"
             description="Cuando la oferta esté publicada, los estudiantes pueden aplicar."
           />
-        ) : (
+        ) : null}
+        {noneInFilter ? (
+          <EmptyState
+            title="Ninguna postulación coincide"
+            description="Probá con otro nombre o cambiá el estado."
+          />
+        ) : null}
+        {!noneInFilter && applications.length > 0 ? (
           <Ledger header={<ColumnHeader />}>
-            {applications.map((application) => {
+            {(paged?.pageItems ?? []).map((application) => {
               const state = decisionState[application.id] ?? null
               const busy = state !== null
               const decidable =
@@ -211,7 +260,18 @@ export function OfferApplicationsPage() {
               )
             })}
           </Ledger>
-        )}
+        ) : null}
+        {paged && paged.pageItems.length > 0 ? (
+          <Pagination
+            page={paged.page}
+            totalPages={paged.totalPages}
+            totalItems={paged.totalItems}
+            from={paged.from}
+            to={paged.to}
+            onPageChange={paged.setPage}
+            itemLabel="postulaciones"
+          />
+        ) : null}
       </Panel>
     </>
   )

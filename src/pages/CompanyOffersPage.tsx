@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   type Company,
@@ -12,12 +12,26 @@ import {
 } from '@/api/companies'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/AuthContext'
+import { FilterTabs } from '@/components/FilterTabs'
 import { OfferCard, OfferGrid } from '@/components/OfferCard'
+import { Pagination } from '@/components/Pagination'
 import { PageHeader } from '@/components/PageHeader'
 import { AsyncSection, EmptyState } from '@/components/Panel'
+import { SearchField, matchesSearch } from '@/components/SearchField'
 import { StatCard, StatGrid } from '@/components/StatCard'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { usePagedItems } from '@/lib/use-paged-items'
+
+const ALL_STATUSES = 'TODAS'
+const PAGE_SIZE = 9
+
+const STATUS_FILTERS = [
+  { value: ALL_STATUSES, label: 'Todas' },
+  { value: 'DRAFT', label: 'Borradores' },
+  { value: 'PUBLISHED', label: 'Publicadas' },
+  { value: 'CLOSED', label: 'Cerradas' },
+]
 import {
   Dialog,
   DialogBody,
@@ -330,6 +344,18 @@ export function CompanyOffersPage() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState(ALL_STATUSES)
+  const filtered = useMemo(() => {
+    if (!offers) return undefined
+    return offers.filter(
+      (offer) =>
+        (statusFilter === ALL_STATUSES || offer.status === statusFilter) &&
+        (matchesSearch(offer.title, query) || matchesSearch(offer.description, query)),
+    )
+  }, [offers, statusFilter, query])
+  const paged = usePagedItems(filtered, PAGE_SIZE, `${statusFilter}|${query}`)
+
   function refetchOffers() {
     return listMyOffers()
       .then((data) => setOffers(data))
@@ -455,34 +481,77 @@ export function CompanyOffersPage() {
         </p>
       ) : null}
 
+      {offers && offers.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              label="Buscar mis ofertas"
+              placeholder="Buscar por cargo o descripción"
+              className="sm:max-w-md"
+            />
+            <span className="ml-auto font-data text-12 text-inkSoft" aria-live="polite">
+              {plural(filtered?.length ?? 0, 'oferta', 'ofertas')}
+            </span>
+          </div>
+          <FilterTabs
+            label="Filtrar por estado de la oferta"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_FILTERS}
+          />
+        </div>
+      ) : null}
+
       <AsyncSection
         error={error}
-        data={offers}
+        data={paged?.pageItems}
         loadingLabel="Cargando ofertas…"
         empty={
-          <EmptyState
-            title="Todavía no has publicado ofertas"
-            description="Publicá una vacante para que los estudiantes puedan postular."
-            action={
-              <Button type="button" size="sm" onClick={openDialog}>
-                Publicar oferta
-              </Button>
-            }
-          />
+          offers && offers.length > 0 ? (
+            <EmptyState
+              title="Ninguna oferta coincide con el filtro"
+              description="Probá con otra búsqueda o cambiá el estado."
+            />
+          ) : (
+            <EmptyState
+              title="Todavía no has publicado ofertas"
+              description="Publicá una vacante para que los estudiantes puedan postular."
+              action={
+                <Button type="button" size="sm" onClick={openDialog}>
+                  Publicar oferta
+                </Button>
+              }
+            />
+          )
         }
       >
         {(items) => (
-          <OfferGrid>
-            {items.map((offer) => (
-              <CompanyOfferCard
-                key={offer.id}
-                offer={offer}
-                state={actionState[offer.id] ?? null}
-                onPublish={handlePublish}
-                onClose={handleClose}
+          <div className="flex flex-col gap-4">
+            <OfferGrid>
+              {items.map((offer) => (
+                <CompanyOfferCard
+                  key={offer.id}
+                  offer={offer}
+                  state={actionState[offer.id] ?? null}
+                  onPublish={handlePublish}
+                  onClose={handleClose}
+                />
+              ))}
+            </OfferGrid>
+            {paged ? (
+              <Pagination
+                page={paged.page}
+                totalPages={paged.totalPages}
+                totalItems={paged.totalItems}
+                from={paged.from}
+                to={paged.to}
+                onPageChange={paged.setPage}
+                itemLabel="ofertas"
               />
-            ))}
-          </OfferGrid>
+            ) : null}
+          </div>
         )}
       </AsyncSection>
 

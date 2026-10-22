@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { HourLogForm } from '@/components/HourLogForm'
 import { HoursProgressPanel } from '@/components/HoursProgressPanel'
+import { Pagination } from '@/components/Pagination'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState, LoadingState, Panel } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -15,11 +16,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { type HoursSummary, summarizeHours } from '@/lib/hours'
+import { usePagedItems } from '@/lib/use-paged-items'
 import { plural } from '@/lib/utils'
 import type { LocalHourLog } from '@/offline/db'
 import { useHourLogs } from '@/offline/hooks/useHourLogs'
 import { usePlacement } from '@/offline/hooks/usePlacement'
 import { HourLedger } from '@/components/ledger/HourLedgerParts'
+
+const HOURS_PAGE_SIZE = 10
 
 function submittedNote(hours: HoursSummary) {
   if (hours.submittedHours <= 0) return null
@@ -35,7 +39,9 @@ function SyncNote({ note }: { note?: string | null }) {
 }
 
 function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
-  if (logs.length === 0) {
+  const paged = usePagedItems(logs, HOURS_PAGE_SIZE, 'hour-logs')
+
+  if (logs.length === 0 || !paged) {
     return (
       <Panel>
         <EmptyState
@@ -47,17 +53,32 @@ function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
   }
 
   return (
-    <HourLedger logs={logs} statusRight renderRest={(log) => (
-      <>
-            <span className="flex-1 text-14 text-inkBody">
-              {log.activity}
-              <SyncNote note={log.syncNote} />
-            </span>
-            <span className="sm:w-32 sm:text-right">
-              <StatusBadge status={log.status} />
-            </span>
-      </>
-    )} />
+    <div className="flex flex-col gap-3">
+      <HourLedger logs={paged.pageItems} statusRight renderRest={(log) => (
+        <>
+              <span className="flex-1 text-14 text-inkBody">
+                {log.activity}
+                <SyncNote note={log.syncNote} />
+              </span>
+              <span className="sm:w-32 sm:text-right">
+                <StatusBadge status={log.status} />
+              </span>
+        </>
+      )} />
+      {paged.totalPages > 1 ? (
+        <Panel>
+          <Pagination
+            page={paged.page}
+            totalPages={paged.totalPages}
+            totalItems={paged.totalItems}
+            from={paged.from}
+            to={paged.to}
+            onPageChange={paged.setPage}
+            itemLabel="registros de horas"
+          />
+        </Panel>
+      ) : null}
+    </div>
   )
 }
 
