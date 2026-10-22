@@ -37,10 +37,12 @@ function SyncNote({ note }: { note?: string | null }) {
 function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
   if (logs.length === 0) {
     return (
-      <EmptyState
-        title="Todavía no has registrado horas"
-        description="Puedes hacerlo sin conexión: se sincroniza cuando vuelva la señal."
-      />
+      <Panel>
+        <EmptyState
+          title="Todavía no has registrado horas"
+          description="Puedes hacerlo sin conexión: se sincroniza cuando vuelva la señal."
+        />
+      </Panel>
     )
   }
 
@@ -92,10 +94,12 @@ export function HourLogsPage() {
 
   if (placement === null) {
     return (
-      <EmptyState
-        title="No tienes una práctica activa todavía"
-        description="Cuando la coordinación active tu plaza, vas a poder registrar horas."
-      />
+      <Panel>
+        <EmptyState
+          title="No tienes una práctica activa todavía"
+          description="Cuando la coordinación active tu plaza, vas a poder registrar horas."
+        />
+      </Panel>
     )
   }
 

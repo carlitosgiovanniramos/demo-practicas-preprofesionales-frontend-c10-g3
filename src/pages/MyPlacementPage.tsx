@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { HeroCard, HeroPanel } from '@/components/HeroPanel'
 import { PageHeader } from '@/components/PageHeader'
-import { EmptyState, LoadingState, Section } from '@/components/Panel'
+import { EmptyState, LoadingState, Panel, Section } from '@/components/Panel'
 import { ProgressBar } from '@/components/ProgressBar'
 import { StatCard, StatGrid } from '@/components/StatCard'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -201,10 +201,12 @@ export function MyPlacementPage() {
 
   if (placement === null) {
     return (
-      <EmptyState
-        title="No tienes una práctica activa todavía"
-        description="Cuando la coordinación active tu plaza, la vas a ver acá."
-      />
+      <Panel>
+        <EmptyState
+          title="No tienes una práctica activa todavía"
+          description="Cuando la coordinación active tu plaza, la vas a ver acá."
+        />
+      </Panel>
     )
   }
 

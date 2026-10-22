@@ -2,7 +2,7 @@ import { type ChangeEvent, type FormEvent, useRef, useState } from 'react'
 import { ApiError, api } from '@/api/client'
 import { Chip } from '@/components/Chip'
 import { PageHeader } from '@/components/PageHeader'
-import { EmptyState, LoadingState, Section } from '@/components/Panel'
+import { EmptyState, LoadingState, Panel, Section } from '@/components/Panel'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -122,10 +122,12 @@ export function DocumentsPage() {
 
   if (placement === null) {
     return (
-      <EmptyState
-        title="No tienes una práctica activa todavía"
-        description="Cuando la coordinación active tu plaza, vas a poder subir documentos."
-      />
+      <Panel>
+        <EmptyState
+          title="No tienes una práctica activa todavía"
+          description="Cuando la coordinación active tu plaza, vas a poder subir documentos."
+        />
+      </Panel>
     )
   }
 

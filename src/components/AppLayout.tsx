@@ -89,7 +89,7 @@ export function AppLayout() {
               <span className="block text-11 text-inkSoft">{role ? ROLE_LABEL[role] : ''}</span>
             </span>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={logout}>
+          <Button type="button" variant="outline" onClick={logout}>
             Salir
           </Button>
         </div>

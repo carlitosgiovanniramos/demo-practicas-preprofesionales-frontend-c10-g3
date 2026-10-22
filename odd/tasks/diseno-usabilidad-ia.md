@@ -16,7 +16,11 @@ User request (verbatim, L1): "continuemos donde lo dejamos necesito que mejores 
 T1 S1, S2, S4 - WeeklySummaryPanel result header, regenerate, copy feedback, character count, retry. Route: inline. Status: done. RED: 6 new behavior tests failing before the change; GREEN: 9/9 in src/components/ai, tsc clean, eslint clean (0 errors). Commit: feat(ui) weekly draft usability (see git log).
 T2 S3 - AI provenance as a Tag instead of a middle-dot aside; review note stated as a sentence; existing tokens only. Route: inline. Status: done. RED: new provenance test failing first; GREEN: 10/10 in src/components/ai; full pnpm test 30/30 files passing. Commit: feat(ui) AI provenance tag (see git log).
 
+T3 S3 - Systemic visual bug: twMerge treated numeric text sizes (text-14) as colors and dropped text colors (primary buttons rendered dark text on navy). Fix in src/lib/utils.ts with tests. Route: inline. Status: done (pnpm test 149/149, tsc and eslint clean). Commit: fix(ui) (see git log).
+T4 S3 - Visual pass from Playwright screenshots: StatCard hierarchy, header button height, student empty states inside Panel. Route: inline. Status: done for desktop; mobile sidebar/sync card compaction pending. Commit: style(ui) (see git log).
+
 ## Log
+L5 Playwright capture (scratch dir, outside repo) with mocked API: login, student, tutor, company, coordinator screens. Findings: primary button text invisible, stat cards unbalanced, student empty states floating without a container, header buttons of different heights, mobile sync card pushes content down (pending).
 L1 User request above (verbatim).
 L2 Exploration: Gemini results are rendered only by src/components/ai/WeeklySummaryPanel.tsx (api in src/api/ai.ts). Baseline: 5 tests passing in src/components/ai.
 L3 Design skills consulted: web-design-guidelines (focus, reduced motion, clarity), frontend-design (restraint; avoid templated tells such as all-caps eyebrows and middle-dot meta strings). Existing tokens in src/index.css are kept.
