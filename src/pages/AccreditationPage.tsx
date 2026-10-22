@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { type AccreditationRow, reportForPeriod } from '@/api/accreditation'
 import { ApiError } from '@/api/client'
-import { ActionPlanEditor } from '@/components/ai/ActionPlanEditor'
 import { FilterTabs } from '@/components/FilterTabs'
 import { PageHeader } from '@/components/PageHeader'
 import { AsyncSection, EmptyState, Panel, TableHeaderRow, rowClass } from '@/components/Panel'
@@ -50,9 +49,8 @@ function AccreditationStats({ rows }: { rows: AccreditationRow[] }) {
   )
 }
 
-function AccreditationRowItem({ row, period }: { row: AccreditationRow; period: string }) {
+function AccreditationRowItem({ row }: { row: AccreditationRow }) {
   return (
-    <>
     <div className={rowClass}>
       <span className="text-14 font-semibold text-ink sm:w-40">{row.studentName}</span>
       <span className="sm:w-44">
@@ -71,8 +69,6 @@ function AccreditationRowItem({ row, period }: { row: AccreditationRow; period: 
         {row.reasons.length > 0 ? row.reasons.join(' · ') : '—'}
       </span>
     </div>
-    <ActionPlanEditor placementId={row.placementId} period={period} />
-    </>
   )
 }
 
@@ -136,7 +132,7 @@ export function AccreditationPage() {
           <Panel>
             <Ledger header={<ColumnHeader />}>
               {items.map((row) => (
-                <AccreditationRowItem key={row.placementId} row={row} period={period} />
+                <AccreditationRowItem key={row.placementId} row={row} />
               ))}
             </Ledger>
           </Panel>
