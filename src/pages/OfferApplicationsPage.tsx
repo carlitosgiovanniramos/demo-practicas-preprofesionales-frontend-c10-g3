@@ -16,6 +16,7 @@ import { SearchField, matchesSearch } from '@/components/SearchField'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Ledger } from '@/components/ledger/Ledger'
+import { OfferAffinityPanel } from '@/components/OfferAffinityPanel'
 import { formatDate } from '@/lib/date'
 import { loadOfferInto } from '@/lib/offer-loader'
 import { usePagedItems } from '@/lib/use-paged-items'
@@ -156,6 +157,8 @@ export function OfferApplicationsPage() {
             : `${offer.seats} de ${offer.seats} cupos ocupados`
         }
       />
+
+      <OfferAffinityPanel offerId={offerId} />
 
       {decisionError ? (
         <p role="alert" className="rounded-lg bg-chipVoid px-4 py-3 text-13 text-void">
