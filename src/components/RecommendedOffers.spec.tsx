@@ -1,11 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
 import { type RecommendedOffer, recommendedOffers } from '@/api/recommendations'
 import { RecommendedOffers } from './RecommendedOffers'
 
 vi.mock('@/api/recommendations', () => ({ recommendedOffers: vi.fn() }))
+
+const ROTATE_MS = 6000
 
 function offer(overrides: Partial<RecommendedOffer>): RecommendedOffer {
   return {
@@ -28,6 +30,14 @@ function offer(overrides: Partial<RecommendedOffer>): RecommendedOffer {
   }
 }
 
+function threeOffers(): RecommendedOffer[] {
+  return [
+    offer({ id: 1, title: 'Desarrollador React' }),
+    offer({ id: 2, title: 'Analista de datos' }),
+    offer({ id: 3, title: 'Auxiliar de soporte' }),
+  ]
+}
+
 function renderPanel() {
   return render(
     <MemoryRouter>
@@ -39,9 +49,33 @@ function renderPanel() {
 const nextButton = () => screen.getByRole('button', { name: 'Recomendación siguiente' })
 const prevButton = () => screen.getByRole('button', { name: 'Recomendación anterior' })
 const explainButton = () => screen.getByRole('button', { name: 'Por qué' })
+const region = () => screen.getByRole('region', { name: 'Recomendadas para ti' })
+
+/** Deja que las promesas pendientes (la carga inicial) se resuelvan dentro de act. */
+async function flush() {
+  await act(async () => {
+    await Promise.resolve()
+  })
+}
+
+/** Simula un navegador con media query: `wide` decide si la pantalla es ancha. */
+function stubMatchMedia(wide: boolean) {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('min-width') ? wide : false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }))
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
+  stubMatchMedia(false)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 describe('RecommendedOffers', () => {
@@ -51,9 +85,9 @@ describe('RecommendedOffers', () => {
     renderPanel()
 
     expect(await screen.findByText('Recomendadas para ti')).toBeTruthy()
-    expect(screen.getByText('Afinidad 42%')).toBeTruthy()
+    expect(screen.getByText('42%')).toBeTruthy()
     expect(screen.getByText('react')).toBeTruthy()
-    expect(recommendedOffers).toHaveBeenCalledWith(3)
+    expect(recommendedOffers).toHaveBeenCalledWith(5)
   })
 
   it('no muestra nada cuando todas las afinidades son 0 (sin postulaciones)', async () => {
@@ -74,22 +108,75 @@ describe('RecommendedOffers', () => {
     expect(screen.queryByText('Recomendadas para ti')).toBeNull()
   })
 
-  it('muestra una recomendación a la vez y las flechas pasan a la siguiente o anterior', async () => {
-    vi.mocked(recommendedOffers).mockResolvedValue([
-      offer({ id: 1, title: 'Desarrollador React' }),
-      offer({ id: 2, title: 'Analista de datos' }),
-    ])
+  it('en pantallas anchas muestra la activa al centro con sus vecinas', async () => {
+    stubMatchMedia(true)
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
 
     renderPanel()
-    expect(await screen.findByText('1 de 2')).toBeTruthy()
-    expect(prevButton().hasAttribute('disabled')).toBe(true)
+    await screen.findByText('1 de 3')
 
-    fireEvent.click(nextButton())
-    expect(screen.getByText('2 de 2')).toBeTruthy()
-    expect(nextButton().hasAttribute('disabled')).toBe(true)
+    const slides = within(region()).getAllByRole('group')
+    expect(slides).toHaveLength(3)
+    expect(slides[1].textContent).toContain('Desarrollador React')
+    expect(slides[0].textContent).toContain('Auxiliar de soporte')
+    expect(slides[2].textContent).toContain('Analista de datos')
+  })
+
+  it('las flechas avanzan y retroceden dando la vuelta a la lista', async () => {
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await screen.findByText('1 de 3')
 
     fireEvent.click(prevButton())
-    expect(screen.getByText('1 de 2')).toBeTruthy()
+    expect(screen.getByText('3 de 3')).toBeTruthy()
+    fireEvent.click(nextButton())
+    fireEvent.click(nextButton())
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+  })
+
+  it('rota sola cada pocos segundos y vuelve al inicio al final', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await flush()
+    expect(screen.getByText('1 de 3')).toBeTruthy()
+
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+    act(() => vi.advanceTimersByTime(2 * ROTATE_MS))
+    expect(screen.getByText('1 de 3')).toBeTruthy()
+  })
+
+  it('se detiene al pasar el ratón y reanuda al salir', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await flush()
+    fireEvent.mouseEnter(region())
+    act(() => vi.advanceTimersByTime(2 * ROTATE_MS))
+    expect(screen.getByText('1 de 3')).toBeTruthy()
+
+    fireEvent.mouseLeave(region())
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+  })
+
+  it('el botón de pausa detiene la rotación y su etiqueta cambia', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Pausar rotación' }))
+    act(() => vi.advanceTimersByTime(2 * ROTATE_MS))
+    expect(screen.getByText('1 de 3')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reanudar rotación' }))
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('2 de 3')).toBeTruthy()
   })
 
   it('"Por qué" muestra la explicación solo de la oferta donde se pulsó', async () => {
@@ -105,15 +192,30 @@ describe('RecommendedOffers', () => {
     fireEvent.click(explainButton())
 
     expect(await screen.findByText('Comparte React con tu experiencia.')).toBeTruthy()
-    expect(screen.queryByText('Comparte datos con tu experiencia.')).toBeNull()
 
     fireEvent.click(nextButton())
-    // La explicación de la primera tarjeta queda oculta, no visible en la segunda.
-    expect(screen.getByText('Comparte React con tu experiencia.').closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(screen.queryByText('Comparte React con tu experiencia.')).toBeNull()
     expect(screen.queryByText('Comparte datos con tu experiencia.')).toBeNull()
+
     fireEvent.click(explainButton())
     expect(await screen.findByText('Comparte datos con tu experiencia.')).toBeTruthy()
     expect(recommendedOffers).toHaveBeenCalledTimes(2)
+  })
+
+  it('mientras se lee una explicación la rotación no avanza', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers)
+      .mockResolvedValueOnce(threeOffers())
+      .mockResolvedValueOnce(threeOffers().map((o) => ({ ...o, explanation: 'Texto de prueba.' })))
+
+    renderPanel()
+    await flush()
+    fireEvent.click(explainButton())
+    await flush()
+    expect(screen.getByText('Texto de prueba.')).toBeTruthy()
+
+    act(() => vi.advanceTimersByTime(2 * ROTATE_MS))
+    expect(screen.getByText('1 de 3')).toBeTruthy()
   })
 
   it('si el modelo no responde muestra el mensaje del proveedor', async () => {
