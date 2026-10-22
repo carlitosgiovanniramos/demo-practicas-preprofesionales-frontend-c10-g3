@@ -12,7 +12,7 @@ import {
   clearField,
   clickButtonNamed,
   createNew,
-  dictateIntoFocused,
+  voiceFallback,
   fillField,
   nextField,
   searchFor,
@@ -148,7 +148,7 @@ function AppFrame() {
           </div>
           <VoiceCommandButton
             getCommands={getVoiceCommands}
-            fallback={(spoken) => clickButtonNamed(spoken) || dictateIntoFocused(spoken)}
+            fallback={voiceFallback}
           />
           <Button type="button" variant="outline" onClick={openHelp} aria-label="Ver atajos de teclado">
             <Keyboard aria-hidden="true" className="size-4" />

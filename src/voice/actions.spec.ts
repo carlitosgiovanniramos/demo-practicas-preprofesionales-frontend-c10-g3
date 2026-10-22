@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  fillFieldByHint,
+  voiceFallback,
   clickButtonNamed,
   clearField,
   createNew,
@@ -164,6 +166,49 @@ describe('nextField and clearField', () => {
 
     expect(clearField()).toBe(true)
     expect((document.getElementById('a') as HTMLInputElement).value).toBe('')
+  })
+})
+
+describe('login fields and email dictation', () => {
+  it('llena el campo cuya etiqueta contiene la pista dada, aunque tenga un asterisco', () => {
+    document.body.innerHTML = `
+      <label for="e">Correo institucional *</label><input id="e" type="email" />
+      <label for="p">Contraseña *</label><input id="p" type="password" />`
+
+    expect(fillFieldByHint('correo', 'ana arroba uta punto edu punto ec')).toBe(true)
+    expect(fillFieldByHint('contraseña', 'secreta')).toBe(true)
+
+    expect((document.getElementById('e') as HTMLInputElement).value).toBe('ana@uta.edu.ec')
+    expect((document.getElementById('p') as HTMLInputElement).value).toBe('secreta')
+  })
+
+  it('convierte "arroba" y "punto" al escribir un correo dictado', () => {
+    document.body.innerHTML = '<input id="e" type="email" />'
+    document.getElementById('e')!.focus()
+
+    dictateIntoFocused('ana arroba uta punto edu punto ec')
+
+    expect((document.getElementById('e') as HTMLInputElement).value).toBe('ana@uta.edu.ec')
+  })
+
+  it('no llena nada si ningún campo tiene la pista', () => {
+    document.body.innerHTML = '<label for="n">Nombre</label><input id="n" />'
+    expect(fillFieldByHint('correo', 'ana')).toBe(false)
+  })
+})
+
+describe('voiceFallback', () => {
+  it('pulsa el botón si lo dicho es su nombre; si no, lo escribe en el campo enfocado', () => {
+    document.body.innerHTML = '<button id="b">Entrar</button><input id="i" />'
+    const onClick = vi.fn()
+    document.getElementById('b')!.addEventListener('click', onClick)
+    document.getElementById('i')!.focus()
+
+    voiceFallback('entrar')
+    expect(onClick).toHaveBeenCalledOnce()
+
+    voiceFallback('hola')
+    expect((document.getElementById('i') as HTMLInputElement).value).toBe('hola')
   })
 })
 

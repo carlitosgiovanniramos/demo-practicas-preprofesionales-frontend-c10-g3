@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildVoiceCommands, matchCommand, matchVoice, normalizeSpeech, type VoiceCommand } from './commands'
+import { buildLoginCommands, buildVoiceCommands, matchCommand, matchVoice, normalizeSpeech, type VoiceCommand } from './commands'
 
 function makeActions() {
   return {
@@ -62,6 +62,23 @@ describe('matchVoice', () => {
 
   it('las frases exactas siguen funcionando', () => {
     expect(matchVoice('ofertas', commands)?.command.id).toBe('ofertas')
+  })
+})
+
+describe('buildLoginCommands', () => {
+  it('inicia sesión con voz y llena el correo y la contraseña por su nombre', () => {
+    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true) }
+    const commands = buildLoginCommands(actions)
+
+    matchVoice('iniciar sesion', commands)?.command.run()
+    const email = matchVoice('correo ana arroba uta', commands)
+    email?.command.run(email.argument)
+    const password = matchVoice('contraseña secreta', commands)
+    password?.command.run(password.argument)
+
+    expect(actions.submit).toHaveBeenCalledOnce()
+    expect(actions.fillByHint).toHaveBeenNthCalledWith(1, 'correo', 'ana arroba uta')
+    expect(actions.fillByHint).toHaveBeenNthCalledWith(2, 'contraseña', 'secreta')
   })
 })
 

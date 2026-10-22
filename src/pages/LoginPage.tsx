@@ -2,6 +2,9 @@ import { type FormEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert } from '@/lib/alert'
+import { buildLoginCommands } from '@/voice/commands'
+import { fillFieldByHint, submitForm, voiceFallback } from '@/voice/actions'
+import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { Eye, EyeOff } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/AuthContext'
@@ -93,6 +96,13 @@ export function LoginPage() {
         <div className="rounded-2xl bg-surface px-7 py-7">
           <h1 className="font-display text-26 font-bold tracking-[-0.02em] text-ink">Entrá a tu cuenta</h1>
           <p className="mt-1 text-14 text-inkMid">Con el correo institucional que te dio la unidad de vinculación.</p>
+
+          <div className="mt-4 flex justify-end">
+            <VoiceCommandButton
+              getCommands={() => buildLoginCommands({ submit: submitForm, fillByHint: fillFieldByHint })}
+              fallback={voiceFallback}
+            />
+          </div>
 
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <FormField label="Correo institucional" required error={fieldErrors.email}>

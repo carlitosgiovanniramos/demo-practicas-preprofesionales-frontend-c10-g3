@@ -49,9 +49,21 @@ function toIsoDate(text: string): string | null {
  * Convierte lo dictado al formato que espera el campo: la hora de un `type="time"` necesita HH:mm,
  * la fecha AAAA-MM-DD y un número solo dígitos. Lo demás se escribe tal cual.
  */
+/** "ana arroba uta punto edu" → "ana@uta.edu": un correo no lleva espacios ni se dicta con símbolos. */
+const SPOKEN_SYMBOLS: Record<string, string> = { arroba: '@', punto: '.' }
+
+function spokenEmail(text: string): string {
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => SPOKEN_SYMBOLS[word] ?? word)
+    .join('')
+}
+
 function toFieldValue(field: TextField, spoken: string): string {
   const text = spoken.trim()
   if (!(field instanceof HTMLInputElement)) return text
+  if (field.type === 'email') return spokenEmail(text)
   if (field.type === 'time') return toTime(text) ?? text
   if (field.type === 'date') return toIsoDate(text) ?? text
   if (field.type === 'number') return text.replace(',', '.').match(/-?\d+(\.\d+)?/)?.[0] ?? text
@@ -143,6 +155,27 @@ export function fillField(spoken: string): boolean {
   match.field.focus()
   setFieldValue(match.field, toFieldValue(match.field, text))
   return true
+}
+
+/**
+ * Llena el campo cuya etiqueta contiene la pista dada ("correo", "contraseña"), aunque no esté en
+ * un formulario. Sirve para pantallas de login, donde el nombre del campo es corto.
+ */
+export function fillFieldByHint(hint: string, spoken: string): boolean {
+  const wanted = normalizeSpeech(hint)
+  const field = formFields().find((candidate) => normalizeSpeech(fieldName(candidate)).includes(wanted))
+  if (!field) return false
+  field.focus()
+  setFieldValue(field, toFieldValue(field, spoken))
+  return true
+}
+
+/**
+ * Lo que el micrófono no reconoce como comando: si es el nombre de un botón, lo pulsa; si no,
+ * lo escribe en el campo enfocado. Es el mismo respaldo en toda la app, incluida la pantalla de login.
+ */
+export function voiceFallback(spoken: string): boolean {
+  return clickButtonNamed(spoken) || dictateIntoFocused(spoken)
 }
 
 /**

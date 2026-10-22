@@ -48,7 +48,7 @@ export function normalizeSpeech(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[.,;:!?¿¡]/g, ' ')
+    .replace(/[.,;:!?¿¡*]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -85,6 +85,40 @@ export function matchVoice(transcript: string, commands: VoiceCommand[]): VoiceM
     }
   }
   return null
+}
+
+export interface LoginActions {
+  submit: () => boolean
+  fillByHint: (hint: string, text: string) => boolean
+}
+
+/**
+ * Comandos de la pantalla de login, sin sesión: entrar con la voz y llenar el correo y la contraseña
+ * diciéndolos ("correo ana arroba uta punto edu", "contraseña …").
+ */
+export function buildLoginCommands(actions: LoginActions): VoiceCommand[] {
+  return [
+    {
+      id: 'login-submit',
+      phrases: ['iniciar sesion', 'entrar', 'ingresar'],
+      feedback: () => 'Iniciando sesión',
+      run: () => actions.submit(),
+    },
+    {
+      id: 'login-email',
+      phrases: [],
+      prefixes: ['correo'],
+      feedback: () => 'Correo escrito',
+      run: (text) => actions.fillByHint('correo', text ?? ''),
+    },
+    {
+      id: 'login-password',
+      phrases: [],
+      prefixes: ['contraseña', 'contrasena', 'clave'],
+      feedback: () => 'Contraseña escrita',
+      run: (text) => actions.fillByHint('contraseña', text ?? ''),
+    },
+  ]
 }
 
 /** Comandos de la aplicación: navegación, ayuda, carrusel, y acciones sobre la pantalla actual. */
