@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { showErrorAlert } from '@/lib/alert'
 import { matchCommand, type VoiceCommand } from './commands'
 
 /** Idioma del reconocimiento. Cambiar aquí si el usuario habla otra variante del español. */
@@ -73,11 +74,15 @@ export function useVoiceCommands(commands: VoiceCommand[]) {
         setError(null)
         command.run()
       } else {
-        setError(`No reconocí "${transcript}". Di, por ejemplo, "ofertas" o "ayuda".`)
+        const message = `No reconocí "${transcript}". Di, por ejemplo, "ofertas" o "ayuda".`
+        setError(message)
+        showErrorAlert(message, 'No reconocí ese comando')
       }
     }
     instance.onerror = (event) => {
-      setError(ERROR_MESSAGES[event.error] ?? 'No se pudo usar el micrófono')
+      const message = ERROR_MESSAGES[event.error] ?? 'No se pudo usar el micrófono'
+      setError(message)
+      showErrorAlert(message, 'Problema con el micrófono')
       setListening(false)
     }
     instance.onend = () => setListening(false)
