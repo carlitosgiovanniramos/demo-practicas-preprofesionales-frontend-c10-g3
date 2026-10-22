@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearField, createNew, fillField, nextField, searchFor, submitForm, writeText } from './actions'
+import {
+  clearField,
+  createNew,
+  dictateIntoFocused,
+  fillField,
+  nextField,
+  searchFor,
+  submitForm,
+  writeText,
+} from './actions'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -94,6 +103,46 @@ describe('fillField', () => {
   it('informa cuando no hay un campo con ese nombre', () => {
     document.body.innerHTML = '<form><label for="n">Nombre</label><input id="n" /></form>'
     expect(fillField('correo hola')).toBe(false)
+  })
+})
+
+describe('dictation and field formats', () => {
+  it('reemplaza el valor del campo enfocado con lo dictado', () => {
+    document.body.innerHTML = '<form><input id="a" value="viejo" /></form>'
+    document.getElementById('a')!.focus()
+
+    expect(dictateIntoFocused('nuevo texto')).toBe(true)
+    expect((document.getElementById('a') as HTMLInputElement).value).toBe('nuevo texto')
+  })
+
+  it('escribe la hora dictada en formato HH:mm en un campo de hora', () => {
+    document.body.innerHTML = '<form><input id="t" type="time" /></form>'
+    document.getElementById('t')!.focus()
+
+    dictateIntoFocused('2:35')
+    expect((document.getElementById('t') as HTMLInputElement).value).toBe('02:35')
+
+    dictateIntoFocused('14 30')
+    expect((document.getElementById('t') as HTMLInputElement).value).toBe('14:30')
+  })
+
+  it('convierte una fecha dictada en formato AAAA-MM-DD para un campo de fecha', () => {
+    document.body.innerHTML = '<form><input id="d" type="date" /></form>'
+    document.getElementById('d')!.focus()
+
+    dictateIntoFocused('5/3/2026')
+    expect((document.getElementById('d') as HTMLInputElement).value).toBe('2026-03-05')
+  })
+
+  it('no escribe nada si no hay campo enfocado', () => {
+    expect(dictateIntoFocused('hola')).toBe(false)
+  })
+
+  it('llena un campo de hora de cualquier página aunque no esté en un formulario', () => {
+    document.body.innerHTML = '<label for="h">Hora de inicio</label><input id="h" type="time" />'
+
+    expect(fillField('hora de inicio 2:35')).toBe(true)
+    expect((document.getElementById('h') as HTMLInputElement).value).toBe('02:35')
   })
 })
 

@@ -142,14 +142,26 @@ describe('focus after the shortcuts list', () => {
 })
 
 describe('voice shortcut inside forms', () => {
-  it('Alt+V activa el micrófono aunque el foco esté en un campo de texto', () => {
+  it('F2 funciona también con el foco en un campo (es una tecla, no una letra)', () => {
+    const onToggle = vi.fn()
+    window.addEventListener(VOICE_TOGGLE_EVENT, onToggle)
+    renderApp()
+    screen.getByLabelText('Nombre').focus()
+
+    fireEvent.keyDown(screen.getByLabelText('Nombre'), { key: 'F2' })
+
+    expect(onToggle).toHaveBeenCalledOnce()
+    window.removeEventListener(VOICE_TOGGLE_EVENT, onToggle)
+  })
+
+  it('F2 activa el micrófono aunque el foco esté en un campo de texto', () => {
     const onToggle = vi.fn()
     window.addEventListener(VOICE_TOGGLE_EVENT, onToggle)
     renderApp()
     const name = screen.getByLabelText('Nombre')
     name.focus()
 
-    fireEvent.keyDown(name, { key: 'v', altKey: true })
+    fireEvent.keyDown(name, { key: 'F2' })
 
     expect(onToggle).toHaveBeenCalledOnce()
     window.removeEventListener(VOICE_TOGGLE_EVENT, onToggle)

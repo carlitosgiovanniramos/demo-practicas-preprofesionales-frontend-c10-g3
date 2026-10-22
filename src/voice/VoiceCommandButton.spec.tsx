@@ -29,6 +29,29 @@ describe('VoiceCommandButton with the voice shortcut', () => {
   })
 })
 
+describe('VoiceCommandButton hands-free mode', () => {
+  it('ofrece el modo manos libres como botón que se puede encender', () => {
+    vi.stubGlobal('SpeechRecognition', class {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onresult = null
+      onerror = null
+      onend = null
+      start = vi.fn()
+      stop = vi.fn()
+      abort = vi.fn()
+    })
+    localStorage.clear()
+    render(<VoiceCommandButton getCommands={() => []} />)
+
+    const button = screen.getByRole('button', { name: 'Activar modo manos libres' })
+    act(() => button.click())
+
+    expect(screen.getByRole('button', { name: 'Apagar modo manos libres' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
 describe('VoiceCommandButton', () => {
   it('se muestra apagado y explica la razón cuando el navegador no tiene reconocimiento de voz', () => {
     render(<VoiceCommandButton getCommands={() => []} />)

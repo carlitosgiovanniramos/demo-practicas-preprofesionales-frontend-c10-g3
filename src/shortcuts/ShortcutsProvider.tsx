@@ -155,8 +155,8 @@ export function ShortcutsProvider({ navPaths, role, children }: ShortcutsProvide
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      // Alt+V funciona en cualquier lugar, también dentro de campos y diálogos: no escribe una letra.
-      if (event.altKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'v') {
+      // F2 funciona en cualquier lugar, también dentro de campos y diálogos: no es una letra.
+      if (event.key === 'F2' && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault()
         window.dispatchEvent(new Event(VOICE_TOGGLE_EVENT))
         return

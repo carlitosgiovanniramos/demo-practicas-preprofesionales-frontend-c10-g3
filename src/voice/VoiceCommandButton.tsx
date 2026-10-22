@@ -1,13 +1,15 @@
 import { useEffect } from 'react'
-import { Mic, MicOff } from 'lucide-react'
-import { VOICE_TOGGLE_EVENT } from './events'
+import { Ear, Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { VoiceCommand } from './commands'
-import { useVoiceCommands } from './useVoiceCommands'
+import { VOICE_TOGGLE_EVENT } from './events'
+import { useVoiceCommands, WAKE_WORD } from './useVoiceCommands'
 
 interface VoiceCommandButtonProps {
   /** Lee los comandos disponibles al momento de hablar (dependen de la pantalla abierta). */
   getCommands: () => VoiceCommand[]
+  /** Lo que no es un comando se escribe en el campo enfocado (dictado). */
+  fallback?: (spoken: string) => boolean
 }
 
 /** Lo que se muestra junto al botón: si escucha, el error o lo último que se entendió. */
@@ -17,11 +19,14 @@ function statusText(voice: { listening: boolean; error: string | null; lastHeard
   return voice.lastHeard ? `Dijiste: "${voice.lastHeard}"` : null
 }
 
-/** Botón de micrófono del encabezado. Sin soporte del navegador se muestra apagado con la razón. */
-export function VoiceCommandButton({ getCommands }: VoiceCommandButtonProps) {
-  const voice = useVoiceCommands(getCommands)
+/**
+ * Controles de voz del encabezado: micrófono por pulsación y modo manos libres. Sin soporte del
+ * navegador se muestra apagado con la razón.
+ */
+export function VoiceCommandButton({ getCommands, fallback }: VoiceCommandButtonProps) {
+  const voice = useVoiceCommands(getCommands, { fallback })
 
-  // El atajo de teclado (V) pide el mismo cambio que el botón.
+  // La tecla (F2, o V fuera de campos) pide el mismo cambio que el botón.
   useEffect(() => {
     window.addEventListener(VOICE_TOGGLE_EVENT, voice.toggle)
     return () => window.removeEventListener(VOICE_TOGGLE_EVENT, voice.toggle)
@@ -55,8 +60,19 @@ export function VoiceCommandButton({ getCommands }: VoiceCommandButtonProps) {
         <Mic aria-hidden="true" className="size-4" />
         <span className="hidden lg:inline">Voz</span>
       </Button>
+      <Button
+        type="button"
+        variant={voice.handsFree ? 'default' : 'outline'}
+        aria-pressed={voice.handsFree}
+        aria-label={voice.handsFree ? 'Apagar modo manos libres' : 'Activar modo manos libres'}
+        title={`Manos libres: di "${WAKE_WORD}" antes de cada orden`}
+        onClick={voice.toggleHandsFree}
+      >
+        <Ear aria-hidden="true" className="size-4" />
+        <span className="hidden lg:inline">Manos libres</span>
+      </Button>
       <span role="status" className="hidden max-w-[220px] truncate text-12 text-inkSoft md:block">
-        {status}
+        {voice.handsFree ? `Manos libres: di "${WAKE_WORD}" y la orden` : status}
       </span>
     </div>
   )

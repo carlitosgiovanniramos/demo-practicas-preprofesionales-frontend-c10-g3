@@ -35,6 +35,7 @@ const commands: VoiceCommand[] = [{ id: 'ofertas', phrases: ['ofertas'], run }]
 const getCommands = () => commands
 
 beforeEach(async () => {
+  localStorage.clear()
   FakeRecognition.instances.length = 0
   run.mockReset()
   run.mockReturnValue(undefined)
@@ -110,6 +111,50 @@ describe('useVoiceCommands', () => {
     expect(Swal.fire).toHaveBeenCalledWith(
       expect.objectContaining({ icon: 'error', title: 'No reconocí ese comando', html: expect.stringContaining('hola mundo') }),
     )
+  })
+
+  it('lo que no es un comando se escribe en el campo enfocado (dictado)', () => {
+    const fallback = vi.fn(() => true)
+    const { result } = renderHook(() => useVoiceCommands(getCommands, { fallback }))
+    act(() => result.current.toggle())
+
+    heard('hora de inicio 2:35')
+
+    expect(fallback).toHaveBeenCalledWith('hora de inicio 2:35')
+    expect(Swal.fire).not.toHaveBeenCalled()
+  })
+
+  it('en modo manos libres ignora lo que no empieza por "asistente"', () => {
+    const { result } = renderHook(() => useVoiceCommands(getCommands))
+    act(() => result.current.toggleHandsFree())
+
+    heard('ofertas')
+    expect(run).not.toHaveBeenCalled()
+
+    heard('asistente ofertas')
+    expect(run).toHaveBeenCalledOnce()
+  })
+
+  it('en modo manos libres vuelve a escuchar cuando el reconocimiento termina', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useVoiceCommands(getCommands))
+    act(() => result.current.toggleHandsFree())
+    expect(FakeRecognition.instances).toHaveLength(1)
+
+    act(() => FakeRecognition.instances[0].onend?.())
+    act(() => vi.advanceTimersByTime(500))
+
+    expect(FakeRecognition.instances).toHaveLength(2)
+    vi.useRealTimers()
+  })
+
+  it('recuerda la preferencia de manos libres entre visitas', () => {
+    const { result } = renderHook(() => useVoiceCommands(getCommands))
+    act(() => result.current.toggleHandsFree())
+
+    expect(localStorage.getItem('voice:handsFree')).toBe('true')
+    act(() => result.current.toggleHandsFree())
+    expect(localStorage.getItem('voice:handsFree')).toBe('false')
   })
 
   it('muestra el error del micrófono en una alerta completa, sin truncar', () => {

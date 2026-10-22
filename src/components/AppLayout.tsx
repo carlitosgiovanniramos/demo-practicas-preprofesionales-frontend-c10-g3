@@ -8,7 +8,16 @@ import { RECOMMENDATION_STEP_EVENT } from '@/components/RecommendedOffers'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { ShortcutsProvider, useShortcuts } from '@/shortcuts/ShortcutsProvider'
 import { startSync } from '@/offline/sync/scheduler'
-import { clearField, createNew, fillField, nextField, searchFor, submitForm, writeText } from '@/voice/actions'
+import {
+  clearField,
+  createNew,
+  dictateIntoFocused,
+  fillField,
+  nextField,
+  searchFor,
+  submitForm,
+  writeText,
+} from '@/voice/actions'
 import { buildVoiceCommands, type VoiceCommand } from '@/voice/commands'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { cn } from '@/lib/utils'
@@ -135,7 +144,7 @@ function AppFrame() {
               <span className="block text-11 text-inkSoft">{role ? ROLE_LABEL[role] : ''}</span>
             </span>
           </div>
-          <VoiceCommandButton getCommands={getVoiceCommands} />
+          <VoiceCommandButton getCommands={getVoiceCommands} fallback={dictateIntoFocused} />
           <Button type="button" variant="outline" onClick={openHelp} aria-label="Ver atajos de teclado">
             <Keyboard aria-hidden="true" className="size-4" />
             <span className="hidden sm:inline">Atajos</span>
