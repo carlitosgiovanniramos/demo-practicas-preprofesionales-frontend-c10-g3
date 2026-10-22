@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ApiError } from '@/api/client'
@@ -8,8 +8,6 @@ import { Section } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
 
 const LIMIT = 3
-/** Desplazamiento por flecha, en píxeles: una tarjeta más su separación. */
-const CARD_STEP = 300
 
 function percent(score: number): number {
   return Math.round(score * 100)
@@ -17,17 +15,19 @@ function percent(score: number): number {
 
 interface RecommendedCardProps {
   item: RecommendedOffer
-  onExplain: () => void
+  /** Explicación de esta oferta, solo si el estudiante la pidió en esta tarjeta. */
+  explanation: string | null | undefined
   explaining: boolean
   explainError: string | null
+  onExplain: () => void
 }
 
-function RecommendedCard({ item, onExplain, explaining, explainError }: RecommendedCardProps) {
+function RecommendedCard({ item, explanation, explaining, explainError, onExplain }: RecommendedCardProps) {
   return (
-    <article className="flex h-full flex-col gap-3 rounded-xl border border-paperRule bg-surface p-4">
+    <article className="flex flex-col gap-3 rounded-xl border border-paperRule bg-surface p-4">
       <div className="min-w-0">
-        <h3 className="line-clamp-2 text-14 font-semibold text-ink">{item.title}</h3>
-        <div className="truncate text-12 text-inkSoft">{item.company.name}</div>
+        <h3 className="text-14 font-semibold text-ink">{item.title}</h3>
+        <div className="text-12 text-inkSoft">{item.company.name}</div>
       </div>
 
       <Chip tone="stamp" className="self-start">
@@ -42,14 +42,14 @@ function RecommendedCard({ item, onExplain, explaining, explainError }: Recommen
         </div>
       ) : null}
 
-      {item.explanation ? <p className="text-13 leading-relaxed text-inkBody">{item.explanation}</p> : null}
+      {explanation ? <p className="text-13 leading-relaxed text-inkBody">{explanation}</p> : null}
       {explainError ? (
         <p role="alert" className="text-12 font-medium text-void">
           {explainError}
         </p>
       ) : null}
 
-      <div className="mt-auto flex flex-wrap gap-2 pt-1">
+      <div className="flex flex-wrap gap-2 pt-1">
         <Button type="button" size="sm" variant="outline" onClick={onExplain} disabled={explaining}>
           {explaining ? 'Consultando…' : 'Por qué'}
         </Button>
@@ -62,15 +62,18 @@ function RecommendedCard({ item, onExplain, explaining, explainError }: Recommen
 }
 
 /**
- * Ofertas que el recomendador ordena por afinidad con lo que el estudiante ya postuló, en un
- * carrusel horizontal. Si todas las afinidades son 0 (sin postulaciones todavía) o la petición
- * falla, el bloque no se muestra: es una ayuda, no una pieza obligatoria de la página.
+ * Ofertas que el recomendador ordena por afinidad con lo que el estudiante ya postuló. Se ven
+ * de una en una con las flechas. "Por qué" pide la explicación una sola vez (el modelo responde
+ * por el lote) y solo se muestra en la oferta donde se pulsó. Si todas las afinidades son 0 o la
+ * petición falla, el bloque no se muestra.
  */
 export function RecommendedOffers() {
   const [items, setItems] = useState<RecommendedOffer[] | null>(null)
-  const [explaining, setExplaining] = useState(false)
-  const [explainError, setExplainError] = useState<string | null>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
+  const [index, setIndex] = useState(0)
+  const [explanations, setExplanations] = useState<Record<number, string | null>>({})
+  const [shownId, setShownId] = useState<number | null>(null)
+  const [explainingId, setExplainingId] = useState<number | null>(null)
+  const [explainError, setExplainError] = useState<{ id: number; message: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -86,36 +89,45 @@ export function RecommendedOffers() {
     }
   }, [])
 
-  async function explain() {
-    setExplaining(true)
+  async function explain(id: number) {
     setExplainError(null)
-    try {
-      setItems(await recommendedOffers(LIMIT, true))
-    } catch (err) {
-      setExplainError(err instanceof ApiError ? err.message : 'No se pudo obtener la explicación')
-    } finally {
-      setExplaining(false)
+    if (id in explanations) {
+      setShownId(id)
+      return
     }
-  }
-
-  function scrollTrack(direction: 1 | -1) {
-    trackRef.current?.scrollBy({ left: direction * CARD_STEP, behavior: 'smooth' })
+    setExplainingId(id)
+    try {
+      const data = await recommendedOffers(LIMIT, true)
+      setExplanations(Object.fromEntries(data.map((offer) => [offer.id, offer.explanation])))
+      setShownId(id)
+    } catch (err) {
+      setExplainError({ id, message: err instanceof ApiError ? err.message : 'No se pudo obtener la explicación' })
+    } finally {
+      setExplainingId(null)
+    }
   }
 
   const hasSignal = items?.some((item) => item.score > 0) ?? false
   if (!items || !hasSignal) return null
 
+  const count = items.length
+  const go = (delta: number) => setIndex((current) => Math.min(count - 1, Math.max(0, current + delta)))
+
   return (
     <Section
       title="Recomendadas para ti"
       aside={
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className="font-data text-12 text-inkSoft" aria-live="polite">
+            {index + 1} de {count}
+          </span>
           <Button
             type="button"
             size="icon"
             variant="outline"
             aria-label="Recomendación anterior"
-            onClick={() => scrollTrack(-1)}
+            onClick={() => go(-1)}
+            disabled={index === 0}
           >
             <ChevronLeft aria-hidden="true" />
           </Button>
@@ -124,29 +136,38 @@ export function RecommendedOffers() {
             size="icon"
             variant="outline"
             aria-label="Recomendación siguiente"
-            onClick={() => scrollTrack(1)}
+            onClick={() => go(1)}
+            disabled={index === count - 1}
           >
             <ChevronRight aria-hidden="true" />
           </Button>
         </div>
       }
     >
-      <div
-        ref={trackRef}
-        role="list"
-        aria-label="Ofertas recomendadas"
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-[18px] py-4 [scrollbar-width:none]"
-      >
-        {items.map((item) => (
-          <div key={item.id} role="listitem" className="w-[min(100%,280px)] shrink-0 snap-start">
-            <RecommendedCard
-              item={item}
-              onExplain={explain}
-              explaining={explaining}
-              explainError={explainError}
-            />
-          </div>
-        ))}
+      <div className="overflow-hidden px-[18px] py-4">
+        <div
+          role="list"
+          aria-label="Ofertas recomendadas"
+          className="flex transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: `translateX(-${index * 100}%)` }}
+        >
+          {items.map((item, position) => (
+            <div
+              key={item.id}
+              role="listitem"
+              aria-hidden={position !== index}
+              className="w-full shrink-0"
+            >
+              <RecommendedCard
+                item={item}
+                explanation={shownId === item.id ? explanations[item.id] : undefined}
+                explaining={explainingId === item.id}
+                explainError={explainError?.id === item.id ? explainError.message : null}
+                onExplain={() => explain(item.id)}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </Section>
   )

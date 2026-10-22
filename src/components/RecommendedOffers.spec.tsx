@@ -36,6 +36,10 @@ function renderPanel() {
   )
 }
 
+const nextButton = () => screen.getByRole('button', { name: 'Recomendación siguiente' })
+const prevButton = () => screen.getByRole('button', { name: 'Recomendación anterior' })
+const explainButton = () => screen.getByRole('button', { name: 'Por qué' })
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -70,30 +74,46 @@ describe('RecommendedOffers', () => {
     expect(screen.queryByText('Recomendadas para ti')).toBeNull()
   })
 
-  it('las flechas desplazan el carrusel hacia el lado elegido', async () => {
-    const scrollBy = vi.fn()
-    Object.defineProperty(HTMLElement.prototype, 'scrollBy', { value: scrollBy, configurable: true })
-    vi.mocked(recommendedOffers).mockResolvedValue([offer({ id: 1 }), offer({ id: 2, title: 'Analista de datos' })])
+  it('muestra una recomendación a la vez y las flechas pasan a la siguiente o anterior', async () => {
+    vi.mocked(recommendedOffers).mockResolvedValue([
+      offer({ id: 1, title: 'Desarrollador React' }),
+      offer({ id: 2, title: 'Analista de datos' }),
+    ])
 
     renderPanel()
-    await screen.findByText('Recomendadas para ti')
-    fireEvent.click(screen.getByRole('button', { name: 'Recomendación siguiente' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Recomendación anterior' }))
+    expect(await screen.findByText('1 de 2')).toBeTruthy()
+    expect(prevButton().hasAttribute('disabled')).toBe(true)
 
-    expect(scrollBy).toHaveBeenNthCalledWith(1, { left: 300, behavior: 'smooth' })
-    expect(scrollBy).toHaveBeenNthCalledWith(2, { left: -300, behavior: 'smooth' })
+    fireEvent.click(nextButton())
+    expect(screen.getByText('2 de 2')).toBeTruthy()
+    expect(nextButton().hasAttribute('disabled')).toBe(true)
+
+    fireEvent.click(prevButton())
+    expect(screen.getByText('1 de 2')).toBeTruthy()
   })
 
-  it('"Por qué" pide la explicación del modelo y la muestra en la oferta', async () => {
+  it('"Por qué" muestra la explicación solo de la oferta donde se pulsó', async () => {
     vi.mocked(recommendedOffers)
-      .mockResolvedValueOnce([offer({})])
-      .mockResolvedValueOnce([offer({ explanation: 'Comparte React con tu experiencia.' })])
+      .mockResolvedValueOnce([offer({ id: 1 }), offer({ id: 2, title: 'Analista de datos' })])
+      .mockResolvedValueOnce([
+        offer({ id: 1, explanation: 'Comparte React con tu experiencia.' }),
+        offer({ id: 2, title: 'Analista de datos', explanation: 'Comparte datos con tu experiencia.' }),
+      ])
 
     renderPanel()
-    fireEvent.click(await screen.findByRole('button', { name: 'Por qué' }))
+    await screen.findByText('1 de 2')
+    fireEvent.click(explainButton())
 
     expect(await screen.findByText('Comparte React con tu experiencia.')).toBeTruthy()
-    expect(recommendedOffers).toHaveBeenLastCalledWith(3, true)
+    expect(screen.queryByText('Comparte datos con tu experiencia.')).toBeNull()
+
+    fireEvent.click(nextButton())
+    // La explicación de la primera tarjeta queda oculta, no visible en la segunda.
+    expect(screen.getByText('Comparte React con tu experiencia.').closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(screen.queryByText('Comparte datos con tu experiencia.')).toBeNull()
+    fireEvent.click(explainButton())
+    expect(await screen.findByText('Comparte datos con tu experiencia.')).toBeTruthy()
+    expect(recommendedOffers).toHaveBeenCalledTimes(2)
   })
 
   it('si el modelo no responde muestra el mensaje del proveedor', async () => {
