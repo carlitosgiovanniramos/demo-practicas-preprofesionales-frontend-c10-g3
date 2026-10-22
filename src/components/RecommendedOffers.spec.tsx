@@ -70,6 +70,20 @@ describe('RecommendedOffers', () => {
     expect(screen.queryByText('Recomendadas para ti')).toBeNull()
   })
 
+  it('las flechas desplazan el carrusel hacia el lado elegido', async () => {
+    const scrollBy = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollBy', { value: scrollBy, configurable: true })
+    vi.mocked(recommendedOffers).mockResolvedValue([offer({ id: 1 }), offer({ id: 2, title: 'Analista de datos' })])
+
+    renderPanel()
+    await screen.findByText('Recomendadas para ti')
+    fireEvent.click(screen.getByRole('button', { name: 'Recomendación siguiente' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Recomendación anterior' }))
+
+    expect(scrollBy).toHaveBeenNthCalledWith(1, { left: 300, behavior: 'smooth' })
+    expect(scrollBy).toHaveBeenNthCalledWith(2, { left: -300, behavior: 'smooth' })
+  })
+
   it('"Por qué" pide la explicación del modelo y la muestra en la oferta', async () => {
     vi.mocked(recommendedOffers)
       .mockResolvedValueOnce([offer({})])

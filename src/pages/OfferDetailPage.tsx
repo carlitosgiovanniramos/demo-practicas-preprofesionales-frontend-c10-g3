@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
+import { canApply } from '@/lib/application-rules'
 import { Link, useParams } from 'react-router-dom'
 import { type Application, apply, listMine } from '@/api/applications'
 import { ApiError } from '@/api/client'
@@ -59,14 +60,17 @@ function ApplicationSection({ application, form }: ApplicationSectionProps) {
     )
   }
 
-  if (application) {
+  if (application && !canApply(application)) {
     return (
       <Section title="Tu postulación">
-        <div className="flex flex-wrap items-center gap-3 px-[18px] py-4">
-          <StatusBadge status={application.status} />
-          <span className="font-data text-12 text-inkSoft">
-            Enviada el {formatDate(application.submittedAt)}
-          </span>
+        <div className="flex flex-col gap-2 px-[18px] py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge status={application.status} />
+            <span className="font-data text-12 text-inkSoft">
+              Enviada el {formatDate(application.submittedAt)}
+            </span>
+          </div>
+          <p className="text-13 text-inkSoft">No puedes volver a postular mientras esta postulación siga activa.</p>
         </div>
       </Section>
     )
@@ -74,7 +78,12 @@ function ApplicationSection({ application, form }: ApplicationSectionProps) {
 
   return (
     <Section title="Postular a esta oferta">
-      <div className="px-[18px] py-4">{form}</div>
+      <div className="flex flex-col gap-4 px-[18px] py-4">
+        {application ? (
+          <p className="text-13 text-inkSoft">Tu postulación anterior fue descartada. Puedes volver a postular.</p>
+        ) : null}
+        {form}
+      </div>
     </Section>
   )
 }
