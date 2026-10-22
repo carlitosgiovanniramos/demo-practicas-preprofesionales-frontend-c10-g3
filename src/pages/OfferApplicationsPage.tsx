@@ -1,4 +1,3 @@
-import { Inbox, SearchX } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
@@ -190,14 +189,14 @@ export function OfferApplicationsPage() {
       >
         {applications.length === 0 ? (
           <EmptyState
-            icon={Inbox}
+            illustration="envelope"
             title="Todavía nadie postuló"
             description="Cuando la oferta esté publicada, los estudiantes pueden aplicar."
           />
         ) : null}
         {noneInFilter ? (
           <EmptyState
-            icon={SearchX}
+            illustration="search"
             title="Ninguna postulación coincide"
             description="Probá con otro nombre o cambiá el estado."
           />

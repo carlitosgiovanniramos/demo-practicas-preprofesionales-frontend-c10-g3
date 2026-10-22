@@ -1,9 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { Keyboard } from 'lucide-react'
 import { useAuth, type Role } from '@/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/Logo'
 import { SyncIndicator } from '@/components/SyncIndicator'
+import { ShortcutsProvider, useShortcuts } from '@/shortcuts/ShortcutsProvider'
 import { startSync } from '@/offline/sync/scheduler'
 import { cn } from '@/lib/utils'
 
@@ -55,8 +57,23 @@ function initialsOf(fullName: string | undefined): string {
   return (first + second).toUpperCase() || '··'
 }
 
+/** Envoltura de las pantallas autenticadas: atajos de teclado y el marco con cabecera y menú. */
 export function AppLayout() {
+  const { role } = useAuth()
+  const navPaths = useMemo(
+    () => (role ? NAV_BY_ROLE[role].flatMap((group) => group.items.map((item) => item.path)) : []),
+    [role],
+  )
+  return (
+    <ShortcutsProvider navPaths={navPaths}>
+      <AppFrame />
+    </ShortcutsProvider>
+  )
+}
+
+function AppFrame() {
   const { user, role, logout } = useAuth()
+  const { openHelp } = useShortcuts()
 
   // Se llama una sola vez para toda la sesión autenticada: AppLayout envuelve
   // todas las rutas protegidas vía <Outlet />, así que no se remonta al
@@ -85,6 +102,11 @@ export function AppLayout() {
               <span className="block text-11 text-inkSoft">{role ? ROLE_LABEL[role] : ''}</span>
             </span>
           </div>
+          <Button type="button" variant="outline" onClick={openHelp} aria-label="Ver atajos de teclado">
+            <Keyboard aria-hidden="true" className="size-4" />
+            <span className="hidden sm:inline">Atajos</span>
+            <kbd className="hidden rounded border border-line px-1 font-data text-11 text-inkSoft md:inline">?</kbd>
+          </Button>
           <Button type="button" variant="outline" onClick={logout}>
             Salir
           </Button>

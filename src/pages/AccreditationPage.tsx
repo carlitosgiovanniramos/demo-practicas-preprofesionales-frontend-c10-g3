@@ -1,4 +1,3 @@
-import { FolderOpen, SearchX } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { type AccreditationRow, reportForPeriod } from '@/api/accreditation'
 import { ApiError } from '@/api/client'
@@ -168,13 +167,13 @@ export function AccreditationPage() {
         empty={
           rows && rows.length > 0 ? (
             <EmptyState
-              icon={SearchX}
+              illustration="search"
               title="Ningún practicante coincide"
               description="Probá con otro nombre o cambiá el nivel."
             />
           ) : (
             <EmptyState
-              icon={FolderOpen}
+              illustration="briefcase"
               title="No hay placements en este periodo"
               description="Probá con el otro periodo académico."
             />

@@ -25,6 +25,7 @@ export function SearchField({ value, onChange, label, placeholder, className }: 
       </label>
       <input
         id={id}
+        data-shortcut-search=""
         type="search"
         value={value}
         placeholder={placeholder}

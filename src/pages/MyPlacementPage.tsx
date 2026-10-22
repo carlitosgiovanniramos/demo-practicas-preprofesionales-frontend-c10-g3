@@ -1,4 +1,3 @@
-import { CircleCheck, Clock, GraduationCap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { HeroCard, HeroPanel } from '@/components/HeroPanel'
 import { PageHeader } from '@/components/PageHeader'
@@ -120,7 +119,7 @@ function PendingDocuments({ documents }: { documents: LocalDocument[] | undefine
     return (
       <Section title="Documentos pendientes" aside={aside}>
         <EmptyState
-          icon={CircleCheck}
+          illustration="check"
           title="No tienes documentos pendientes"
           description="Todo lo que subiste ya fue revisado."
         />
@@ -168,7 +167,7 @@ function RecentLogs({ logs }: { logs: LocalHourLog[] | undefined }) {
     return (
       <Section title="Últimos registros de horas" aside={aside}>
         <EmptyState
-          icon={Clock}
+          illustration="clock"
           title="Todavía no has registrado horas"
           description="Puedes hacerlo sin conexión."
         />
@@ -206,7 +205,7 @@ export function MyPlacementPage() {
     return (
       <Panel>
         <EmptyState
-          icon={GraduationCap}
+          illustration="cap"
           title="No tienes una práctica activa todavía"
           description="Cuando la coordinación active tu plaza, la vas a ver acá."
         />

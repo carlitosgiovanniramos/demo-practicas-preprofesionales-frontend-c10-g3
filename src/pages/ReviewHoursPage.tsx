@@ -1,4 +1,3 @@
-import { ClipboardCheck, UserX } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useParams } from 'react-router-dom'
@@ -77,7 +76,7 @@ function ReviewList({ logs, actionState, onApprove, onReject }: ReviewListProps)
   if (logs.length === 0) {
     return (
       <EmptyState
-        icon={ClipboardCheck}
+        illustration="check"
         title="No tienes horas pendientes de revisar"
         description="Cuando tu practicante envíe horas nuevas, aparecen acá."
       />
@@ -260,7 +259,7 @@ export function ReviewHoursPage() {
   }
 
   if (placement === null) {
-    return <EmptyState icon={UserX} title="No se encontró este practicante" />
+    return <EmptyState illustration="people" title="No se encontró este practicante" />
   }
 
   const hours = summarizeHours(logs, placement.requiredHours)

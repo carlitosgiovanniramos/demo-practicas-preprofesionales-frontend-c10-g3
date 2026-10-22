@@ -1,4 +1,3 @@
-import { Clock, GraduationCap } from 'lucide-react'
 import { useState } from 'react'
 import { HourLogForm } from '@/components/HourLogForm'
 import { HoursProgressPanel } from '@/components/HoursProgressPanel'
@@ -46,7 +45,7 @@ function HourLogsList({ logs }: { logs: LocalHourLog[] }) {
     return (
       <Panel>
         <EmptyState
-          icon={Clock}
+          illustration="clock"
           title="Todavía no has registrado horas"
           description="Puedes hacerlo sin conexión: se sincroniza cuando vuelva la señal."
         />
@@ -90,7 +89,9 @@ function NewHourLogDialog({ placementId }: { placementId: number }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button">Registrar horas</Button>
+        <Button type="button" data-shortcut-new="">
+          Registrar horas
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -119,7 +120,7 @@ export function HourLogsPage() {
     return (
       <Panel>
         <EmptyState
-          icon={GraduationCap}
+          illustration="cap"
           title="No tienes una práctica activa todavía"
           description="Cuando la coordinación active tu plaza, vas a poder registrar horas."
         />

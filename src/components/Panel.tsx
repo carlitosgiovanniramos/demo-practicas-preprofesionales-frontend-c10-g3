@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import { type IllustrationName, EmptyIllustration } from '@/components/illustrations/EmptyIllustration'
 import { cn } from '@/lib/utils'
 
 interface PanelProps {
@@ -60,19 +60,15 @@ interface EmptyStateProps {
   title: ReactNode
   description?: ReactNode
   action?: ReactNode
-  /** Icono vectorial (lucide) que explica el contexto vacío; es decorativo para lectores de pantalla. */
-  icon?: LucideIcon
+  /** Ilustración propia del contexto vacío; es decorativa para lectores de pantalla. */
+  illustration?: IllustrationName
 }
 
-/** Estado vacío: icono contextual opcional, título, descripción y una acción. */
-export function EmptyState({ title, description, action, icon: Icon }: EmptyStateProps) {
+/** Estado vacío: ilustración contextual opcional, título, descripción y una acción. */
+export function EmptyState({ title, description, action, illustration }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-1.5 px-5 py-14 text-center">
-      {Icon ? (
-        <span className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-soft text-stamp">
-          <Icon aria-hidden="true" focusable="false" className="size-7" strokeWidth={1.75} />
-        </span>
-      ) : null}
+      {illustration ? <EmptyIllustration name={illustration} className="mb-2" /> : null}
       <p className="font-display text-16 font-semibold text-ink">{title}</p>
       {description ? <p className="text-14 text-inkMid">{description}</p> : null}
       {action ? <div className="mt-3">{action}</div> : null}

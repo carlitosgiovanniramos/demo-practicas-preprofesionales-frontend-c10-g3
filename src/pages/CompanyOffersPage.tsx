@@ -1,4 +1,3 @@
-import { Briefcase, SearchX } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -512,13 +511,11 @@ export function CompanyOffersPage() {
         empty={
           offers && offers.length > 0 ? (
             <EmptyState
-              icon={SearchX}
               title="Ninguna oferta coincide con el filtro"
               description="Probá con otra búsqueda o cambiá el estado."
             />
           ) : (
             <EmptyState
-              icon={Briefcase}
               title="Todavía no has publicado ofertas"
               description="Publicá una vacante para que los estudiantes puedan postular."
               action={
