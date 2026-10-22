@@ -90,6 +90,12 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-10">
+      {/* Control de voz flotante: arriba a la izquierda, solo en el login. */}
+      <VoiceCommandButton
+        variant="floating"
+        getCommands={() => buildLoginCommands({ submit: submitForm, fillByHint: fillFieldByHint })}
+        fallback={voiceFallback}
+      />
       <div className="w-full max-w-[420px]">
         <Logo className="mb-6" />
 
@@ -97,12 +103,6 @@ export function LoginPage() {
           <h1 className="font-display text-26 font-bold tracking-[-0.02em] text-ink">Entrá a tu cuenta</h1>
           <p className="mt-1 text-14 text-inkMid">Con el correo institucional que te dio la unidad de vinculación.</p>
 
-          <div className="mt-4 flex justify-end">
-            <VoiceCommandButton
-              getCommands={() => buildLoginCommands({ submit: submitForm, fillByHint: fillFieldByHint })}
-              fallback={voiceFallback}
-            />
-          </div>
 
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <FormField label="Correo institucional" required error={fieldErrors.email}>

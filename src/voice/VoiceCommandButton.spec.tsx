@@ -35,6 +35,32 @@ describe('VoiceCommandButton with the voice shortcut', () => {
   })
 })
 
+describe('VoiceCommandButton floating variant (login)', () => {
+  it('se muestra flotando arriba a la izquierda, solo con iconos y con la acción al pasar el cursor', () => {
+    vi.stubGlobal('SpeechRecognition', class {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onresult = null
+      onerror = null
+      onend = null
+      start = vi.fn()
+      stop = vi.fn()
+      abort = vi.fn()
+    })
+    const { container } = render(<VoiceCommandButton getCommands={() => []} variant="floating" />)
+
+    expect(container.firstElementChild?.className).toContain('fixed')
+    expect(container.firstElementChild?.className).toContain('left-4')
+    expect(screen.getByRole('button', { name: 'Activar micrófono' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Activar manos libres' })).toBeTruthy()
+    expect(screen.getAllByRole('tooltip').map((tip) => tip.textContent)).toEqual([
+      'Activar micrófono',
+      'Activar manos libres',
+    ])
+  })
+})
+
 describe('VoiceCommandButton first-use tutorial', () => {
   it('la primera vez que se enciende en la sesión explica los comandos antes de escuchar', async () => {
     vi.stubGlobal('SpeechRecognition', class {
