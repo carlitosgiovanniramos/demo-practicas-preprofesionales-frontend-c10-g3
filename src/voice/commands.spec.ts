@@ -13,6 +13,7 @@ function makeActions() {
     fill: vi.fn(() => true),
     nextField: vi.fn(() => true),
     clear: vi.fn(() => true),
+    clickButton: vi.fn(() => true),
   }
 }
 
@@ -122,6 +123,13 @@ describe('buildVoiceCommands', () => {
     expect(actions.nextField).toHaveBeenNthCalledWith(1, 1)
     expect(actions.nextField).toHaveBeenNthCalledWith(2, -1)
     expect(actions.clear).toHaveBeenCalledOnce()
+  })
+
+  it('pulsa un botón por su nombre con "clic en" o "pulsar"', () => {
+    matchVoice('clic en guardar cambios', commands)?.command.run('guardar cambios')
+    matchVoice('pulsar cancelar', commands)?.command.run('cancelar')
+    expect(actions.clickButton).toHaveBeenNthCalledWith(1, 'guardar cambios')
+    expect(actions.clickButton).toHaveBeenNthCalledWith(2, 'cancelar')
   })
 
   it('envía el formulario con "enviar" o "guardar"', () => {

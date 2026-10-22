@@ -124,15 +124,29 @@ describe('useVoiceCommands', () => {
     expect(Swal.fire).not.toHaveBeenCalled()
   })
 
-  it('en modo manos libres ignora lo que no empieza por "asistente"', () => {
+  it('en modo manos libres actúa igual que el micrófono normal, sin palabra de activación', () => {
     const { result } = renderHook(() => useVoiceCommands(getCommands))
     act(() => result.current.toggleHandsFree())
 
     heard('ofertas')
-    expect(run).not.toHaveBeenCalled()
+    expect(run).toHaveBeenCalledOnce()
 
     heard('asistente ofertas')
-    expect(run).toHaveBeenCalledOnce()
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+
+  it('en modo manos libres el silencio no genera alertas: solo vuelve a escuchar', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useVoiceCommands(getCommands))
+    act(() => result.current.toggleHandsFree())
+
+    act(() => FakeRecognition.instances[0].onerror?.({ error: 'no-speech' }))
+    act(() => FakeRecognition.instances[0].onend?.())
+
+    expect(Swal.fire).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(500))
+    expect(FakeRecognition.instances).toHaveLength(2)
+    vi.useRealTimers()
   })
 
   it('en modo manos libres vuelve a escuchar cuando el reconocimiento termina', () => {

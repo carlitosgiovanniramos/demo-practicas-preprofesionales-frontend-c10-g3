@@ -2,6 +2,12 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { VOICE_TOGGLE_EVENT } from './events'
 import { VoiceCommandButton } from './VoiceCommandButton'
+import { showVoiceTutorial, shouldShowVoiceTutorial } from './tutorial'
+
+vi.mock('./tutorial', () => ({
+  shouldShowVoiceTutorial: vi.fn(() => false),
+  showVoiceTutorial: vi.fn(() => Promise.resolve()),
+}))
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -25,6 +31,31 @@ describe('VoiceCommandButton with the voice shortcut', () => {
     act(() => {
       window.dispatchEvent(new Event(VOICE_TOGGLE_EVENT))
     })
+    expect(screen.getByRole('button', { name: 'Dejar de escuchar' }).getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('VoiceCommandButton first-use tutorial', () => {
+  it('la primera vez que se enciende en la sesión explica los comandos antes de escuchar', async () => {
+    vi.stubGlobal('SpeechRecognition', class {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onresult = null
+      onerror = null
+      onend = null
+      start = vi.fn()
+      stop = vi.fn()
+      abort = vi.fn()
+    })
+    vi.mocked(shouldShowVoiceTutorial).mockReturnValueOnce(true)
+    render(<VoiceCommandButton getCommands={() => []} />)
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Activar comandos de voz' }).click()
+    })
+
+    expect(showVoiceTutorial).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Dejar de escuchar' }).getAttribute('aria-pressed')).toBe('true')
   })
 })

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  clickButtonNamed,
   clearField,
   createNew,
   dictateIntoFocused,
@@ -163,6 +164,27 @@ describe('nextField and clearField', () => {
 
     expect(clearField()).toBe(true)
     expect((document.getElementById('a') as HTMLInputElement).value).toBe('')
+  })
+})
+
+describe('clickButtonNamed', () => {
+  it('pulsa el botón cuyo nombre se dice, aunque esté dentro de un formulario', () => {
+    document.body.innerHTML = '<form><button type="button" id="g">Guardar cambios</button></form>'
+    const onClick = vi.fn()
+    document.getElementById('g')!.addEventListener('click', onClick)
+
+    expect(clickButtonNamed('guardar cambios')).toBe(true)
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('no pulsa nada si el nombre no coincide con ningún botón', () => {
+    document.body.innerHTML = '<button>Guardar</button>'
+    expect(clickButtonNamed('cancelar')).toBe(false)
+  })
+
+  it('no pulsa un botón deshabilitado', () => {
+    document.body.innerHTML = '<button disabled>Guardar</button>'
+    expect(clickButtonNamed('guardar')).toBe(false)
   })
 })
 

@@ -115,12 +115,12 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
   const handleTranscript = useCallback(
     (transcript: string) => {
       // En manos libres, solo las órdenes que empiezan por la palabra de activación cuentan.
+      // La palabra de activación es opcional: "asistente ofertas" y "ofertas" hacen lo mismo.
       let spoken = transcript.trim()
-      if (handsFreeRef.current) {
-        if (!normalizeSpeech(spoken).startsWith(`${WAKE_WORD} `)) return
+      if (normalizeSpeech(spoken).startsWith(`${WAKE_WORD} `)) {
         spoken = spoken.split(/\s+/).slice(1).join(' ')
-        if (!spoken) return
       }
+      if (!spoken) return
 
       setLastHeard(spoken)
       const match = matchVoice(spoken, getCommandsRef.current())
@@ -157,6 +157,8 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[], options: Voi
     instance.interimResults = false
     instance.onresult = (event) => handleTranscript(event.results[event.results.length - 1][0].transcript)
     instance.onerror = (event) => {
+      // En manos libres el silencio es normal: no se avisa, solo se vuelve a escuchar al terminar.
+      if (handsFreeRef.current && event.error === 'no-speech') return
       const message = ERROR_MESSAGES[event.error] ?? 'No se pudo usar el micrófono'
       setError(message)
       reportFailure(message, 'Problema con el micrófono')

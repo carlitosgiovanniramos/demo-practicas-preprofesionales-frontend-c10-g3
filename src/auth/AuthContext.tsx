@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useNavigate } from 'react-router-dom'
 import { api, renewAccessToken } from '@/api/client'
 import { db } from '@/offline/db'
+import { resetVoiceTutorial } from '@/voice/tutorial'
 
 export type Role = 'STUDENT' | 'TUTOR' | 'COMPANY' | 'COORDINATOR'
 
@@ -152,6 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ended.current = false
     localStorage.setItem('access_token', accessToken)
     localStorage.setItem('user', JSON.stringify(loggedUser))
+    // Cada inicio de sesión vuelve a mostrar el tutorial de voz la primera vez que se usa el micrófono.
+    resetVoiceTutorial()
     setUser(loggedUser)
     scheduleRenewal(timer, accessToken, onExpiredSession)
   }

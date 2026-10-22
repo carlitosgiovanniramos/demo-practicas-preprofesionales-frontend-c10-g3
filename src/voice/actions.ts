@@ -88,6 +88,24 @@ export function submitForm(): boolean {
 }
 
 /**
+ * Pulsa el botón visible cuyo nombre se dice ("guardar cambios"). Busca dentro del diálogo abierto
+ * si lo hay, y si no en toda la página. Los botones deshabilitados no se pulsan.
+ */
+export function clickButtonNamed(spoken: string): boolean {
+  const heard = normalizeSpeech(spoken)
+  if (!heard) return false
+  const scope: ParentNode = document.querySelector('[role="dialog"]') ?? document.body
+  const match = Array.from(scope.querySelectorAll<HTMLElement>('button, [role="button"]')).find((button) => {
+    const disabled = (button as HTMLButtonElement).disabled === true
+    const name = button.getAttribute('aria-label') ?? button.textContent ?? ''
+    return !disabled && normalizeSpeech(name) === heard
+  })
+  if (!match) return false
+  match.click()
+  return true
+}
+
+/**
  * Campos de texto donde se puede llenar por voz, en orden de pantalla: los del formulario o diálogo
  * que tiene el foco, y si no hay ninguno, los campos sueltos de la página (filtros, búsquedas…).
  */

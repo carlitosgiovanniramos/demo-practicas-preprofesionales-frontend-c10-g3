@@ -37,6 +37,7 @@ export interface VoiceActions {
   fill: (spoken: string) => boolean
   nextField: (delta: 1 | -1) => boolean
   clear: () => boolean
+  clickButton: (name: string) => boolean
 }
 
 /** Verbos que el usuario suele anteponer a la sección: "ir a ofertas", "abrir ofertas". */
@@ -160,6 +161,13 @@ export function buildVoiceCommands(navTargets: NavTarget[], actions: VoiceAction
       phrases: ['campo anterior'],
       feedback: () => 'Campo anterior',
       run: () => actions.nextField(-1),
+    },
+    {
+      id: 'click',
+      phrases: [],
+      prefixes: ['clic en', 'click en', 'pulsar', 'pulsa', 'boton'],
+      feedback: (name) => `Pulsado ${name}`,
+      run: (name) => actions.clickButton(name ?? ''),
     },
     {
       id: 'field-clear',

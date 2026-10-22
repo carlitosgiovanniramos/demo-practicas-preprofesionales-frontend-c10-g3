@@ -10,6 +10,7 @@ import { ShortcutsProvider, useShortcuts } from '@/shortcuts/ShortcutsProvider'
 import { startSync } from '@/offline/sync/scheduler'
 import {
   clearField,
+  clickButtonNamed,
   createNew,
   dictateIntoFocused,
   fillField,
@@ -112,6 +113,7 @@ function AppFrame() {
       fill: fillField,
       nextField,
       clear: clearField,
+      clickButton: clickButtonNamed,
     })
     const screen = screenShortcuts()
       .filter((shortcut) => shortcut.voice && shortcut.voice.length > 0)
@@ -144,7 +146,10 @@ function AppFrame() {
               <span className="block text-11 text-inkSoft">{role ? ROLE_LABEL[role] : ''}</span>
             </span>
           </div>
-          <VoiceCommandButton getCommands={getVoiceCommands} fallback={dictateIntoFocused} />
+          <VoiceCommandButton
+            getCommands={getVoiceCommands}
+            fallback={(spoken) => clickButtonNamed(spoken) || dictateIntoFocused(spoken)}
+          />
           <Button type="button" variant="outline" onClick={openHelp} aria-label="Ver atajos de teclado">
             <Keyboard aria-hidden="true" className="size-4" />
             <span className="hidden sm:inline">Atajos</span>
