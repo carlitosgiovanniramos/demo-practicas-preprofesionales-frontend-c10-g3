@@ -17,7 +17,7 @@ describe('ActionPlanPanel', () => {
   })
 
   it('explica cuando todavía no hay plan', async () => {
-    vi.mocked(getActionPlan).mockResolvedValue(null)
+    vi.mocked(getActionPlan).mockResolvedValue({ placementId: 3, content: null, updatedAt: null })
     render(<ActionPlanPanel placementId={3} />)
 
     expect(await screen.findByText('Todavía no hay un plan de acción')).toBeTruthy()

@@ -24,7 +24,7 @@ describe('ActionPlanEditor', () => {
   })
 
   it('el borrador reemplaza el texto pero no se guarda hasta pulsar Guardar', async () => {
-    vi.mocked(getActionPlan).mockResolvedValue(null)
+    vi.mocked(getActionPlan).mockResolvedValue({ placementId: 3, content: null, updatedAt: null })
     vi.mocked(draftActionPlan).mockResolvedValue({ draft: '1. Revisar horas (tutor)' })
     render(<ActionPlanEditor placementId={3} period="2026-1" />)
 
@@ -37,7 +37,7 @@ describe('ActionPlanEditor', () => {
   })
 
   it('guarda el texto editado', async () => {
-    vi.mocked(getActionPlan).mockResolvedValue(null)
+    vi.mocked(getActionPlan).mockResolvedValue({ placementId: 3, content: null, updatedAt: null })
     vi.mocked(saveActionPlan).mockResolvedValue({ placementId: 3, content: 'Final', updatedAt: '2026-10-21T11:00:00.000Z' })
     render(<ActionPlanEditor placementId={3} period="2026-1" />)
 
@@ -49,7 +49,7 @@ describe('ActionPlanEditor', () => {
   })
 
   it('explica en lenguaje claro cuando la IA no responde', async () => {
-    vi.mocked(getActionPlan).mockResolvedValue(null)
+    vi.mocked(getActionPlan).mockResolvedValue({ placementId: 3, content: null, updatedAt: null })
     vi.mocked(draftActionPlan).mockRejectedValue(new ApiError(503, 'x'))
     render(<ActionPlanEditor placementId={3} period="2026-1" />)
 

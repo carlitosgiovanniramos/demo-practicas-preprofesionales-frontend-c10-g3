@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/date'
 
 /** Plan de acción en solo lectura para el estudiante: lo prepara el coordinador. */
 export function ActionPlanPanel({ placementId }: { placementId: number }) {
-  const [plan, setPlan] = useState<ActionPlan | null | undefined>(undefined)
+  const [plan, setPlan] = useState<ActionPlan | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -26,17 +26,21 @@ export function ActionPlanPanel({ placementId }: { placementId: number }) {
   return (
     <Section
       title="Plan de acción"
-      aside={plan ? <span className="text-12 text-inkSoft">Actualizado el {formatDate(plan.updatedAt.slice(0, 10))}</span> : null}
+      aside={
+        plan?.updatedAt ? <span className="text-12 text-inkSoft">Actualizado el {formatDate(plan.updatedAt.slice(0, 10))}</span> : null
+      }
     >
       <FormAlert message={error} />
       {plan === undefined && !error ? <LoadingState>Cargando tu plan…</LoadingState> : null}
-      {plan === null ? (
+      {plan && plan.content === null ? (
         <EmptyState
           title="Todavía no hay un plan de acción"
           description="Tu coordinación lo preparará si tu estado de acreditación lo requiere."
         />
       ) : null}
-      {plan ? <p className="whitespace-pre-line px-[18px] py-4 text-14 leading-relaxed text-inkBody">{plan.content}</p> : null}
+      {plan?.content ? (
+        <p className="whitespace-pre-line px-[18px] py-4 text-14 leading-relaxed text-inkBody">{plan.content}</p>
+      ) : null}
     </Section>
   )
 }

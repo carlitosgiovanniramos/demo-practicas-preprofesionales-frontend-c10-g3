@@ -11,8 +11,9 @@ export interface WeeklySummary {
 
 export interface ActionPlan {
   placementId: number
-  content: string
-  updatedAt: string
+  /** `null` cuando todavía no hay plan guardado (el backend nunca responde con cuerpo vacío). */
+  content: string | null
+  updatedAt: string | null
 }
 
 /** Borrador de informe semanal (IA). Requiere red; el backend responde 503 si la IA no está configurada. */
@@ -22,9 +23,9 @@ export function weeklySummary(placementId: number, weekStart: string): Promise<W
   )
 }
 
-/** Plan de acción guardado del placement, o `null` si el coordinador aún no creó uno. */
-export function getActionPlan(placementId: number): Promise<ActionPlan | null> {
-  return api<ActionPlan | null>(`/placements/${placementId}/action-plan`)
+/** Plan de acción del placement; `content` es `null` si el coordinador aún no creó uno. */
+export function getActionPlan(placementId: number): Promise<ActionPlan> {
+  return api<ActionPlan>(`/placements/${placementId}/action-plan`)
 }
 
 /** Guarda (crea o reemplaza) el plan. Solo el coordinador puede hacerlo. */

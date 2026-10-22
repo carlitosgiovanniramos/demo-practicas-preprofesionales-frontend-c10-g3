@@ -46,9 +46,9 @@ export function ActionPlanEditor({ placementId, period }: ActionPlanEditorProps)
     }
   }
 
-  function applyPlan(plan: ActionPlan | null) {
-    setText(plan?.content ?? '')
-    setSavedAt(plan?.updatedAt ?? null)
+  function applyPlan(plan: ActionPlan) {
+    setText(plan.content ?? '')
+    setSavedAt(plan.updatedAt)
     setLoaded(true)
   }
 
