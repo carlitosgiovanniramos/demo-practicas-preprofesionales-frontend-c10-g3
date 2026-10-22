@@ -13,10 +13,18 @@ const LIMIT = 5
 /** Tiempo que cada recomendación permanece al centro antes de rotar. */
 const ROTATE_MS = 6000
 const WIDE_QUERY = '(min-width: 768px)'
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 function matches(query: string): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches
+}
+
+/** El foco cuenta como interacción de teclado solo si el navegador lo marca como visible (no con clic). */
+function isKeyboardFocus(target: EventTarget): boolean {
+  try {
+    return (target as HTMLElement).matches(':focus-visible')
+  } catch {
+    return true
+  }
 }
 
 function percent(score: number): number {
@@ -93,16 +101,19 @@ function RecommendedCard({ item, active, explanation, explaining, explainError, 
 
 /**
  * Carrusel de las ofertas que el recomendador ordena por afinidad. La recomendación activa queda
- * al centro y rota sola cada pocos segundos. Sigue las pautas WAI-ARIA del patrón carrusel: se
- * detiene con el ratón encima, con el foco dentro o con el botón de pausa, y la pausa no se
- * reanuda sola. Si todas las afinidades son 0 o la petición falla, el bloque no se muestra.
+ * al centro, rota sola cada pocos segundos y entra con una animación según el sentido del movimiento.
+ * Se pausa con el botón, con el ratón encima, con el foco por teclado dentro, o mientras se lee la
+ * explicación de la tarjeta activa. Cualquier clic o flecha reinicia el tiempo de la tarjeta elegida.
+ * Si todas las afinidades son 0 o la petición falla, el bloque no se muestra.
  */
 export function RecommendedOffers() {
   const [items, setItems] = useState<RecommendedOffer[] | null>(null)
   const [active, setActive] = useState(0)
+  const [direction, setDirection] = useState<1 | -1>(1)
   const [wide, setWide] = useState(() => matches(WIDE_QUERY))
-  const [paused, setPaused] = useState(() => matches(REDUCED_MOTION_QUERY))
+  const [paused, setPaused] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [keyboardFocus, setKeyboardFocus] = useState(false)
   const [explanations, setExplanations] = useState<Record<number, string | null>>({})
   const [shownId, setShownId] = useState<number | null>(null)
   const [explainingId, setExplainingId] = useState<number | null>(null)
@@ -131,14 +142,19 @@ export function RecommendedOffers() {
   }, [])
 
   const count = items?.length ?? 0
-  // Mientras se lee una explicación la rotación no avanza: el texto no debe cambiar de tarjeta.
-  const rotating = !paused && !hovered && shownId === null && count > 1
+  // Se lee la explicación de la tarjeta que está al centro: no rota hasta que el usuario cambie de tarjeta.
+  const readingActive = shownId !== null && items?.[active]?.id === shownId
+  const rotating = !paused && !hovered && !keyboardFocus && !readingActive && count > 1
 
+  // El temporizador se reinicia en cada cambio de tarjeta: cada una dura ROTATE_MS completos.
   useEffect(() => {
     if (!rotating) return
-    const id = window.setInterval(() => setActive((current) => (current + 1) % count), ROTATE_MS)
+    const id = window.setInterval(() => {
+      setDirection(1)
+      setActive((current) => (current + 1) % count)
+    }, ROTATE_MS)
     return () => window.clearInterval(id)
-  }, [rotating, count])
+  }, [rotating, active, count])
 
   async function explain(id: number) {
     setExplainError(null)
@@ -161,11 +177,17 @@ export function RecommendedOffers() {
   const hasSignal = items?.some((item) => item.score > 0) ?? false
   if (!items || !hasSignal) return null
 
-  const go = (delta: number) => {
+  const go = (delta: 1 | -1) => {
+    setDirection(delta)
     setActive((current) => (current + delta + count) % count)
-    setPaused(true)
+  }
+  const goTo = (position: number) => {
+    if (position === active) return
+    setDirection(position > active ? 1 : -1)
+    setActive(position)
   }
   const shownIndexes = visibleIndexes(active, count, wide)
+  const slideEnter = direction > 0 ? 'slide-in-from-right-16' : 'slide-in-from-left-16'
 
   return (
     <Section
@@ -196,7 +218,12 @@ export function RecommendedOffers() {
         className="flex flex-col gap-5 px-[18px] py-5"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onFocus={() => setPaused(true)}
+        onFocus={(event) => {
+          if (isKeyboardFocus(event.target)) setKeyboardFocus(true)
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setKeyboardFocus(false)
+        }}
       >
         <div
           aria-live={rotating ? 'off' : 'polite'}
@@ -205,17 +232,23 @@ export function RecommendedOffers() {
         >
           {shownIndexes.map((position) => {
             const item = items[position]
+            const isActive = position === active
+            // La clave incluye la tarjeta activa: cada cambio monta de nuevo las diapositivas y
+            // así la animación de entrada se ve en todas, no solo en la que aparece por primera vez.
             return (
               <div
-                key={`${position}-${item.id}`}
+                key={`${active}-${position}-${item.id}`}
                 role="group"
                 aria-roledescription="diapositiva"
                 aria-label={`${position + 1} de ${count}`}
-                className="animate-in fade-in-0 zoom-in-95 duration-500 motion-reduce:animate-none"
+                className={cn(
+                  'animate-in fade-in-0 duration-500 ease-out motion-reduce:animate-none',
+                  isActive ? cn(slideEnter, 'zoom-in-95') : 'zoom-in-95',
+                )}
               >
                 <RecommendedCard
                   item={item}
-                  active={position === active}
+                  active={isActive}
                   explanation={shownId === item.id ? explanations[item.id] : undefined}
                   explaining={explainingId === item.id}
                   explainError={explainError?.id === item.id ? explainError.message : null}
@@ -245,12 +278,7 @@ export function RecommendedOffers() {
                   type="button"
                   aria-label={`Ir a la recomendación ${position + 1}`}
                   aria-disabled={position === active}
-                  onClick={() => {
-                    if (position !== active) {
-                      setActive(position)
-                      setPaused(true)
-                    }
-                  }}
+                  onClick={() => goTo(position)}
                   className={cn(
                     'h-1 rounded-full transition-all duration-300',
                     position === active ? 'w-8 bg-ink' : 'w-4 bg-line hover:bg-inkMute',

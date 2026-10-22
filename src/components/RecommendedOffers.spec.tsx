@@ -58,10 +58,13 @@ async function flush() {
   })
 }
 
-/** Simula un navegador con media query: `wide` decide si la pantalla es ancha. */
-function stubMatchMedia(wide: boolean) {
+/**
+ * Simula un navegador con media queries: `wide` decide si la pantalla es ancha y `reduced` si el
+ * sistema pide reducir animaciones (Windows con "Efectos de animación" desactivados).
+ */
+function stubMatchMedia(wide: boolean, reduced = false) {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query.includes('min-width') ? wide : false,
+    matches: query.includes('min-width') ? wide : query.includes('reduce') ? reduced : false,
     media: query,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
@@ -147,6 +150,61 @@ describe('RecommendedOffers', () => {
     expect(screen.getByText('2 de 3')).toBeTruthy()
     act(() => vi.advanceTimersByTime(2 * ROTATE_MS))
     expect(screen.getByText('1 de 3')).toBeTruthy()
+  })
+
+  it('rota sola aunque el sistema pida reducir animaciones; esa preferencia solo quita el movimiento', async () => {
+    vi.useFakeTimers()
+    stubMatchMedia(false, true)
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await flush()
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+  })
+
+  it('una flecha no detiene la rotación: la tarjeta elegida dura su tiempo y luego sigue', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await flush()
+    fireEvent.click(nextButton())
+    expect(screen.getByText('2 de 3')).toBeTruthy()
+
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('3 de 3')).toBeTruthy()
+  })
+
+  it('la explicación de la tarjeta activa pausa la rotación y se reanuda al cambiar de tarjeta', async () => {
+    vi.useFakeTimers()
+    vi.mocked(recommendedOffers)
+      .mockResolvedValueOnce(threeOffers())
+      .mockResolvedValueOnce(threeOffers().map((o) => ({ ...o, explanation: 'Texto de prueba.' })))
+
+    renderPanel()
+    await flush()
+    fireEvent.click(explainButton())
+    await flush()
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('1 de 3')).toBeTruthy()
+
+    fireEvent.click(nextButton())
+    act(() => vi.advanceTimersByTime(ROTATE_MS))
+    expect(screen.getByText('3 de 3')).toBeTruthy()
+  })
+
+  it('la diapositiva que entra se anima en la dirección del movimiento', async () => {
+    vi.mocked(recommendedOffers).mockResolvedValue(threeOffers())
+
+    renderPanel()
+    await screen.findByText('1 de 3')
+    fireEvent.click(nextButton())
+    expect(screen.getByRole('group', { name: '2 de 3' }).className).toContain('slide-in-from-right-16')
+
+    fireEvent.click(prevButton())
+    expect(screen.getByRole('group', { name: '1 de 3' }).className).toContain('slide-in-from-left-16')
   })
 
   it('se detiene al pasar el ratón y reanuda al salir', async () => {
