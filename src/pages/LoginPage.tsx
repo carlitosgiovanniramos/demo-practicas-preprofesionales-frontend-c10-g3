@@ -3,7 +3,15 @@ import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert } from '@/lib/alert'
 import { buildLoginCommands } from '@/voice/commands'
-import { fillFieldByHint, submitForm, togglePasswordVisibility, voiceFallback } from '@/voice/actions'
+import {
+  clearField,
+  fillField,
+  fillFieldByHint,
+  nextField,
+  submitForm,
+  togglePasswordVisibility,
+  voiceFallback,
+} from '@/voice/actions'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { Eye, EyeOff } from 'lucide-react'
 import { ApiError } from '@/api/client'
@@ -98,6 +106,9 @@ export function LoginPage() {
             submit: submitForm,
             fillByHint: fillFieldByHint,
             togglePassword: togglePasswordVisibility,
+            fill: fillField,
+            nextField,
+            clear: clearField,
           })
         }
         fallback={voiceFallback}

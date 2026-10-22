@@ -91,6 +91,10 @@ export interface LoginActions {
   submit: () => boolean
   fillByHint: (hint: string, text: string) => boolean
   togglePassword: () => boolean
+  /** Llena un campo por su nombre dicho al principio: "contraseña secreta". */
+  fill: (spoken: string) => boolean
+  nextField: (delta: 1 | -1) => boolean
+  clear: () => boolean
 }
 
 /**
@@ -118,6 +122,31 @@ export function buildLoginCommands(actions: LoginActions): VoiceCommand[] {
       prefixes: ['contraseña', 'contrasena', 'clave'],
       feedback: () => 'Contraseña escrita',
       run: (text) => actions.fillByHint('contraseña', text ?? ''),
+    },
+    {
+      id: 'login-fill',
+      phrases: [],
+      prefixes: ['llenar', 'completar', 'campo'],
+      feedback: () => 'Campo completado',
+      run: (spoken) => actions.fill(spoken ?? ''),
+    },
+    {
+      id: 'login-field-next',
+      phrases: ['siguiente campo', 'campo siguiente'],
+      feedback: () => 'Siguiente campo',
+      run: () => actions.nextField(1),
+    },
+    {
+      id: 'login-field-prev',
+      phrases: ['campo anterior'],
+      feedback: () => 'Campo anterior',
+      run: () => actions.nextField(-1),
+    },
+    {
+      id: 'login-field-clear',
+      phrases: ['borrar campo', 'limpiar campo'],
+      feedback: () => 'Campo borrado',
+      run: actions.clear,
     },
     {
       id: 'login-password-visibility',

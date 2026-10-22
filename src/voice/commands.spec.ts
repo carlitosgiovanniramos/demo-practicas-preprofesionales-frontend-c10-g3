@@ -67,7 +67,7 @@ describe('matchVoice', () => {
 
 describe('buildLoginCommands', () => {
   it('inicia sesión con voz y llena el correo y la contraseña por su nombre', () => {
-    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true) }
+    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true), fill: vi.fn(() => true), nextField: vi.fn(() => true), clear: vi.fn(() => true) }
     const commands = buildLoginCommands(actions)
 
     matchVoice('iniciar sesion', commands)?.command.run()
@@ -82,9 +82,35 @@ describe('buildLoginCommands', () => {
   })
 })
 
+describe('buildLoginCommands field actions', () => {
+  it('"llenar contraseña" llena la contraseña, no el correo; "siguiente campo" cambia de campo', () => {
+    const actions = {
+      submit: vi.fn(() => true),
+      fillByHint: vi.fn(() => true),
+      togglePassword: vi.fn(() => true),
+      fill: vi.fn(() => true),
+      nextField: vi.fn(() => true),
+      clear: vi.fn(() => true),
+    }
+    const commands = buildLoginCommands(actions)
+
+    const fill = matchVoice('llenar contraseña secreta', commands)
+    fill?.command.run(fill.argument)
+    matchVoice('siguiente campo', commands)?.command.run()
+    matchVoice('campo anterior', commands)?.command.run()
+    matchVoice('borrar campo', commands)?.command.run()
+
+    expect(actions.fill).toHaveBeenCalledWith('contraseña secreta')
+    expect(actions.nextField).toHaveBeenNthCalledWith(1, 1)
+    expect(actions.nextField).toHaveBeenNthCalledWith(2, -1)
+    expect(actions.clear).toHaveBeenCalledOnce()
+    expect(actions.fillByHint).not.toHaveBeenCalled()
+  })
+})
+
 describe('buildLoginCommands password visibility', () => {
   it('"visible" muestra u oculta la contraseña', () => {
-    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true) }
+    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true), fill: vi.fn(() => true), nextField: vi.fn(() => true), clear: vi.fn(() => true) }
     const commands = buildLoginCommands(actions)
 
     matchVoice('visible', commands)?.command.run()
