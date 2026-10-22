@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { type WeeklySummary, weeklySummary } from '@/api/ai'
 import { ApiError } from '@/api/client'
 import { FormAlert } from '@/components/FormAlert'
+import { Tag } from '@/components/Chip'
 import { EmptyState, Section } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -105,9 +106,10 @@ function DraftEditor({
         </div>
       </div>
 
-      <p className="text-12 text-inkSoft">
-        Regenerar reemplaza el texto que editaste. Este borrador no se guarda en el sistema.
-      </p>
+      <div className="flex flex-col gap-1 text-12 text-inkSoft">
+        <p>Revisalo antes de usarlo: la IA puede equivocarse.</p>
+        <p>Regenerar reemplaza el texto que editaste. Este borrador no se guarda en el sistema.</p>
+      </div>
     </div>
   )
 }
@@ -244,7 +246,7 @@ export function WeeklySummaryPanel({ placementId }: WeeklySummaryPanelProps) {
   return (
     <Section
       title="Borrador de informe semanal"
-      aside={<span className="text-12 text-inkSoft">Generado con IA · revisalo antes de usarlo</span>}
+      aside={<Tag>Generado con IA</Tag>}
     >
       <div className="flex flex-col gap-4 px-[18px] py-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

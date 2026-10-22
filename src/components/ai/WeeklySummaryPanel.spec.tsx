@@ -104,6 +104,22 @@ describe('WeeklySummaryPanel', () => {
     expect(await screen.findByLabelText('Borrador (editable)')).toBeTruthy()
   })
 
+  it('marca el origen de la IA y pide revisar el texto antes de usarlo', async () => {
+    vi.mocked(weeklySummary).mockResolvedValue({
+      placementId: 7,
+      weekStart: '2026-04-06',
+      totalHours: 4,
+      entries: 1,
+      draft: 'Texto',
+    })
+    render(<WeeklySummaryPanel placementId={7} />)
+
+    expect(screen.getByText('Generado con IA')).toBeTruthy()
+    fireEvent.click(generateButton())
+
+    expect(await screen.findByText('Revisalo antes de usarlo: la IA puede equivocarse.')).toBeTruthy()
+  })
+
   it('no ofrece borrador cuando la semana no tiene jornadas', async () => {
     vi.mocked(weeklySummary).mockResolvedValue({
       placementId: 7,

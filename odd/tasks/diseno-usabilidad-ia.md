@@ -14,7 +14,7 @@ User request (verbatim, L1): "continuemos donde lo dejamos necesito que mejores 
 
 ## Tasks
 T1 S1, S2, S4 - WeeklySummaryPanel result header, regenerate, copy feedback, character count, retry. Route: inline. Status: done. RED: 6 new behavior tests failing before the change; GREEN: 9/9 in src/components/ai, tsc clean, eslint clean (0 errors). Commit: feat(ui) weekly draft usability (see git log).
-T2 S3 - Shared AI result styling (draft surface, stat chips) using existing tokens. Route: inline. Status: pending. Commit: -
+T2 S3 - AI provenance as a Tag instead of a middle-dot aside; review note stated as a sentence; existing tokens only. Route: inline. Status: done. RED: new provenance test failing first; GREEN: 10/10 in src/components/ai; full pnpm test 30/30 files passing. Commit: feat(ui) AI provenance tag (see git log).
 
 ## Log
 L1 User request above (verbatim).
