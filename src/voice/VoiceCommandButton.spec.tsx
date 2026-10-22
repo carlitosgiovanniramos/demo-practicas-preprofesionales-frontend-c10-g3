@@ -1,9 +1,32 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { VOICE_TOGGLE_EVENT } from './events'
 import { VoiceCommandButton } from './VoiceCommandButton'
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+describe('VoiceCommandButton with the voice shortcut', () => {
+  it('la tecla de voz enciende y apaga el micrófono sin tocar el ratón', () => {
+    vi.stubGlobal('SpeechRecognition', class {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onresult = null
+      onerror = null
+      onend = null
+      start = vi.fn()
+      stop = vi.fn()
+      abort = vi.fn()
+    })
+    render(<VoiceCommandButton getCommands={() => []} />)
+
+    act(() => {
+      window.dispatchEvent(new Event(VOICE_TOGGLE_EVENT))
+    })
+    expect(screen.getByRole('button', { name: 'Dejar de escuchar' }).getAttribute('aria-pressed')).toBe('true')
+  })
 })
 
 describe('VoiceCommandButton', () => {

@@ -24,6 +24,7 @@ import {
   saveOverrides,
 } from './bindings'
 import { ShortcutsDialog } from './ShortcutsDialog'
+import { VOICE_TOGGLE_EVENT } from '@/voice/events'
 
 /**
  * Atajo de una pantalla concreta (la revisión de horas, la evaluación…). Solo existe
@@ -96,6 +97,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function runGlobalAction(id: string, navPaths: string[], navigate: (path: string) => void, openHelp: () => void) {
   if (id === 'help') return openHelp()
+  if (id === 'voice') return window.dispatchEvent(new Event(VOICE_TOGGLE_EVENT))
   if (id === 'search') return document.querySelector<HTMLElement>('[data-shortcut-search]')?.focus()
   if (id === 'new') return document.querySelector<HTMLElement>('[data-shortcut-new]')?.click()
   const navMatch = /^nav-(\d+)$/.exec(id)

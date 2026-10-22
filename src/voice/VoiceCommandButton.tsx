@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Mic, MicOff } from 'lucide-react'
+import { VOICE_TOGGLE_EVENT } from './events'
 import { Button } from '@/components/ui/button'
 import type { VoiceCommand } from './commands'
 import { useVoiceCommands } from './useVoiceCommands'
@@ -18,6 +20,12 @@ function statusText(voice: { listening: boolean; error: string | null; lastHeard
 /** Botón de micrófono del encabezado. Sin soporte del navegador se muestra apagado con la razón. */
 export function VoiceCommandButton({ getCommands }: VoiceCommandButtonProps) {
   const voice = useVoiceCommands(getCommands)
+
+  // El atajo de teclado (V) pide el mismo cambio que el botón.
+  useEffect(() => {
+    window.addEventListener(VOICE_TOGGLE_EVENT, voice.toggle)
+    return () => window.removeEventListener(VOICE_TOGGLE_EVENT, voice.toggle)
+  }, [voice.toggle])
 
   if (!voice.supported) {
     return (

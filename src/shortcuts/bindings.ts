@@ -38,6 +38,8 @@ const GENERIC_NEW_LABEL = 'Acción principal de la pantalla (crear o registrar)'
 const BASE_ACTIONS: ShortcutAction[] = [
   { id: 'search', label: 'Ir al buscador de la pantalla', group: 'Acciones', defaultKeys: '/' },
   { id: 'help', label: 'Mostrar esta lista de atajos', group: 'Ayuda', defaultKeys: '?' },
+  // Con una sola mano: V activa o apaga el micrófono sin llegar al ratón.
+  { id: 'voice', label: 'Activar o apagar el micrófono (comandos de voz)', group: 'Acciones', defaultKeys: 'v' },
 ]
 
 /**
@@ -56,7 +58,7 @@ export function buildActions(navCount: number, role?: ShortcutRole): ShortcutAct
     group: 'Navegación',
     defaultKeys: String(index + 1),
   }))
-  return [BASE_ACTIONS[0], ...newActions, BASE_ACTIONS[1], ...navActions]
+  return [BASE_ACTIONS[0], BASE_ACTIONS[2], ...newActions, BASE_ACTIONS[1], ...navActions]
 }
 
 /**

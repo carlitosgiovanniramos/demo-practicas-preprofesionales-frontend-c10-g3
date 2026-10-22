@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createNew, searchFor, submitForm, writeText } from './actions'
+import { clearField, createNew, fillField, nextField, searchFor, submitForm, writeText } from './actions'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -60,6 +60,60 @@ describe('submitForm', () => {
   it('no envía un formulario que está deshabilitado mientras se guarda', () => {
     document.body.innerHTML = '<form><button type="submit" disabled>Guardando…</button></form>'
     expect(submitForm()).toBe(false)
+  })
+})
+
+describe('fillField', () => {
+  it('escribe en el campo cuyo nombre se dice, sustituyendo lo que había', () => {
+    document.body.innerHTML = `
+      <form>
+        <label for="c">Comentario</label><textarea id="c">antes</textarea>
+        <label for="n">Nombre</label><input id="n" />
+      </form>`
+    const comment = document.getElementById('c') as HTMLTextAreaElement
+
+    expect(fillField('Comentario muy buen trabajo')).toBe(true)
+
+    expect(comment.value).toBe('muy buen trabajo')
+    expect(document.activeElement).toBe(comment)
+  })
+
+  it('reconoce campos con nombre de varias palabras, eligiendo el nombre más largo', () => {
+    document.body.innerHTML = `
+      <form>
+        <label for="a">Motivación</label><input id="a" />
+        <label for="b">Motivación del estudiante</label><input id="b" />
+      </form>`
+
+    fillField('motivación del estudiante quiero aprender')
+
+    expect((document.getElementById('b') as HTMLInputElement).value).toBe('quiero aprender')
+    expect((document.getElementById('a') as HTMLInputElement).value).toBe('')
+  })
+
+  it('informa cuando no hay un campo con ese nombre', () => {
+    document.body.innerHTML = '<form><label for="n">Nombre</label><input id="n" /></form>'
+    expect(fillField('correo hola')).toBe(false)
+  })
+})
+
+describe('nextField and clearField', () => {
+  it('pasa el foco al campo siguiente o anterior del formulario', () => {
+    document.body.innerHTML = '<form><input id="a" /><input id="b" /><input id="c" /></form>'
+    document.getElementById('a')!.focus()
+
+    expect(nextField(1)).toBe(true)
+    expect(document.activeElement?.id).toBe('b')
+    expect(nextField(-1)).toBe(true)
+    expect(document.activeElement?.id).toBe('a')
+  })
+
+  it('borra el texto del campo enfocado', () => {
+    document.body.innerHTML = '<form><input id="a" value="borrame" /></form>'
+    document.getElementById('a')!.focus()
+
+    expect(clearField()).toBe(true)
+    expect((document.getElementById('a') as HTMLInputElement).value).toBe('')
   })
 })
 

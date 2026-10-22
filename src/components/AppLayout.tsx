@@ -8,7 +8,7 @@ import { RECOMMENDATION_STEP_EVENT } from '@/components/RecommendedOffers'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { ShortcutsProvider, useShortcuts } from '@/shortcuts/ShortcutsProvider'
 import { startSync } from '@/offline/sync/scheduler'
-import { searchFor, createNew, submitForm, writeText } from '@/voice/actions'
+import { clearField, createNew, fillField, nextField, searchFor, submitForm, writeText } from '@/voice/actions'
 import { buildVoiceCommands, type VoiceCommand } from '@/voice/commands'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { cn } from '@/lib/utils'
@@ -100,6 +100,9 @@ function AppFrame() {
       create: createNew,
       submit: submitForm,
       write: writeText,
+      fill: fillField,
+      nextField,
+      clear: clearField,
     })
     const screen = screenShortcuts()
       .filter((shortcut) => shortcut.voice && shortcut.voice.length > 0)

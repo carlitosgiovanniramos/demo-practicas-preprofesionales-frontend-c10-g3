@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { VOICE_TOGGLE_EVENT } from '@/voice/events'
 import { ShortcutsProvider, useScreenShortcuts } from './ShortcutsProvider'
 
 function LocationProbe() {
@@ -137,6 +138,19 @@ describe('focus after the shortcuts list', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     await waitFor(() => expect(document.activeElement).toBe(search))
+  })
+})
+
+describe('voice shortcut', () => {
+  it('"v" pide activar o desactivar el micrófono, para usarlo con una sola mano', () => {
+    const onToggle = vi.fn()
+    window.addEventListener(VOICE_TOGGLE_EVENT, onToggle)
+    renderApp()
+
+    fireEvent.keyDown(document.body, { key: 'v' })
+
+    expect(onToggle).toHaveBeenCalledOnce()
+    window.removeEventListener(VOICE_TOGGLE_EVENT, onToggle)
   })
 })
 

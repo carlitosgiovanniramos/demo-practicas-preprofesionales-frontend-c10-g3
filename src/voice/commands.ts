@@ -34,6 +34,9 @@ export interface VoiceActions {
   create: () => boolean
   submit: () => boolean
   write: (text: string) => boolean
+  fill: (spoken: string) => boolean
+  nextField: (delta: 1 | -1) => boolean
+  clear: () => boolean
 }
 
 /** Verbos que el usuario suele anteponer a la sección: "ir a ofertas", "abrir ofertas". */
@@ -138,6 +141,31 @@ export function buildVoiceCommands(navTargets: NavTarget[], actions: VoiceAction
       phrases: ['enviar', 'guardar', 'enviar formulario'],
       feedback: () => 'Enviando',
       run: actions.submit,
+    },
+    {
+      id: 'fill',
+      phrases: [],
+      prefixes: ['llenar', 'completar', 'campo'],
+      feedback: () => 'Campo completado',
+      run: (spoken) => actions.fill(spoken ?? ''),
+    },
+    {
+      id: 'field-next',
+      phrases: ['siguiente campo', 'campo siguiente'],
+      feedback: () => 'Siguiente campo',
+      run: () => actions.nextField(1),
+    },
+    {
+      id: 'field-prev',
+      phrases: ['campo anterior'],
+      feedback: () => 'Campo anterior',
+      run: () => actions.nextField(-1),
+    },
+    {
+      id: 'field-clear',
+      phrases: ['borrar campo', 'limpiar campo'],
+      feedback: () => 'Campo borrado',
+      run: actions.clear,
     },
   ]
 }

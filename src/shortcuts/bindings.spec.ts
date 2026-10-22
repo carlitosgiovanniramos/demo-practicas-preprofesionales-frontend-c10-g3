@@ -55,7 +55,7 @@ describe('buildActions and resolveBindings', () => {
   it('adds one navigation action per sidebar item and keeps the defaults', () => {
     const actions = buildActions(3)
 
-    expect(actions.map((action) => action.id)).toEqual(['search', 'new', 'help', 'nav-1', 'nav-2', 'nav-3'])
+    expect(actions.map((action) => action.id)).toEqual(['search', 'voice', 'new', 'help', 'nav-1', 'nav-2', 'nav-3'])
     expect(actions.find((action) => action.id === 'nav-2')?.defaultKeys).toBe('2')
   })
 

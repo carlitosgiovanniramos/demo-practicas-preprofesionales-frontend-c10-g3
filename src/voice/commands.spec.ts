@@ -10,6 +10,9 @@ function makeActions() {
     create: vi.fn(() => true),
     submit: vi.fn(() => true),
     write: vi.fn(() => true),
+    fill: vi.fn(() => true),
+    nextField: vi.fn(() => true),
+    clear: vi.fn(() => true),
   }
 }
 
@@ -108,6 +111,17 @@ describe('buildVoiceCommands', () => {
     const match = matchVoice('escribir Hola equipo', commands)
     match?.command.run(match.argument)
     expect(actions.write).toHaveBeenCalledWith('Hola equipo')
+  })
+
+  it('llena un campo nombrado, pasa de campo y lo borra con la voz', () => {
+    matchVoice('llenar comentario buen trabajo', commands)?.command.run('comentario buen trabajo')
+    matchVoice('siguiente campo', commands)?.command.run()
+    matchVoice('campo anterior', commands)?.command.run()
+    matchVoice('borrar campo', commands)?.command.run()
+    expect(actions.fill).toHaveBeenCalledWith('comentario buen trabajo')
+    expect(actions.nextField).toHaveBeenNthCalledWith(1, 1)
+    expect(actions.nextField).toHaveBeenNthCalledWith(2, -1)
+    expect(actions.clear).toHaveBeenCalledOnce()
   })
 
   it('envía el formulario con "enviar" o "guardar"', () => {
