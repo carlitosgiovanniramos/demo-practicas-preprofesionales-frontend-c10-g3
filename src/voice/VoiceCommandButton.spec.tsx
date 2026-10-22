@@ -61,6 +61,35 @@ describe('VoiceCommandButton floating variant (login)', () => {
   })
 })
 
+describe('VoiceCommandButton active state (floating)', () => {
+  it('un control activo es azul con el icono blanco; uno inactivo es blanco con icono oscuro', () => {
+    vi.stubGlobal('SpeechRecognition', class {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onresult = null
+      onerror = null
+      onend = null
+      start = vi.fn()
+      stop = vi.fn()
+      abort = vi.fn()
+    })
+    localStorage.clear()
+    render(<VoiceCommandButton getCommands={() => []} variant="floating" />)
+
+    const idle = screen.getByRole('button', { name: 'Activar manos libres' })
+    expect(idle.className).toContain('bg-surface')
+    expect(idle.className).toContain('text-ink')
+
+    act(() => idle.click())
+
+    const active = screen.getByRole('button', { name: 'Apagar manos libres' })
+    expect(active.className).toContain('bg-stamp')
+    expect(active.className).toContain('text-surface')
+    expect(active.className).not.toContain('bg-surface')
+  })
+})
+
 describe('VoiceCommandButton first-use tutorial', () => {
   it('la primera vez que se enciende en la sesión explica los comandos antes de escuchar', async () => {
     vi.stubGlobal('SpeechRecognition', class {

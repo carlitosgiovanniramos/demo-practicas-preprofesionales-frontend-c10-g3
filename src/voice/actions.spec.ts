@@ -197,6 +197,46 @@ describe('login fields and email dictation', () => {
   })
 })
 
+describe('números dictados en correos y contraseñas', () => {
+  it('en una contraseña, "cero uno dos" se escribe 012', () => {
+    document.body.innerHTML = '<input id="p" type="password" />'
+    document.getElementById('p')!.focus()
+
+    dictateIntoFocused('cero uno dos')
+
+    expect((document.getElementById('p') as HTMLInputElement).value).toBe('012')
+  })
+
+  it('entiende números de dos cifras, también "treinta y uno" y "veintitrés"', () => {
+    document.body.innerHTML = '<input id="p" type="password" />'
+    document.getElementById('p')!.focus()
+
+    dictateIntoFocused('treinta y uno')
+    expect((document.getElementById('p') as HTMLInputElement).value).toBe('31')
+
+    dictateIntoFocused('veintitrés')
+    expect((document.getElementById('p') as HTMLInputElement).value).toBe('23')
+  })
+
+  it('en un correo, los números dictados se escriben como cifras', () => {
+    document.body.innerHTML = '<input id="e" type="email" />'
+    document.getElementById('e')!.focus()
+
+    dictateIntoFocused('usuario cero uno arroba mail punto com')
+
+    expect((document.getElementById('e') as HTMLInputElement).value).toBe('usuario01@mail.com')
+  })
+
+  it('deja el texto normal de un campo sin números intacto', () => {
+    document.body.innerHTML = '<textarea id="t"></textarea>'
+    document.getElementById('t')!.focus()
+
+    dictateIntoFocused('cero uno')
+
+    expect((document.getElementById('t') as HTMLTextAreaElement).value).toBe('cero uno')
+  })
+})
+
 describe('voiceFallback', () => {
   it('pulsa el botón si lo dicho es su nombre; si no, lo escribe en el campo enfocado', () => {
     document.body.innerHTML = '<button id="b">Entrar</button><input id="i" />'

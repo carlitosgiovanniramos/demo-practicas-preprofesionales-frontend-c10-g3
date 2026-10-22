@@ -52,8 +52,53 @@ function toIsoDate(text: string): string | null {
 /** "ana arroba uta punto edu" → "ana@uta.edu": un correo no lleva espacios ni se dicta con símbolos. */
 const SPOKEN_SYMBOLS: Record<string, string> = { arroba: '@', punto: '.' }
 
+/** Números de 0 a 29 dichos en una palabra (sin tildes, como los devuelve normalizeSpeech). */
+const SPOKEN_UNITS: Record<string, number> = {
+  cero: 0, uno: 1, un: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9,
+  diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15, dieciseis: 16, diecisiete: 17,
+  dieciocho: 18, diecinueve: 19, veinte: 20, veintiun: 21, veintiuno: 21, veintidos: 22, veintitres: 23,
+  veinticuatro: 24, veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+}
+
+/** Decenas de 30 a 90, que pueden llevar "y" y una unidad: "treinta y uno" es 31. */
+const SPOKEN_TENS: Record<string, number> = {
+  treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60, setenta: 70, ochenta: 80, noventa: 90,
+}
+
+/** "cero uno dos" → "0 1 2"; "treinta y uno" → "31". Las palabras que no son números se dejan igual. */
+function numberWordsToDigits(text: string): string {
+  const words = text.split(/\s+/)
+  const out: string[] = []
+  for (let index = 0; index < words.length; index += 1) {
+    const word = normalizeSpeech(words[index])
+    const tens = SPOKEN_TENS[word]
+    if (tens !== undefined) {
+      const unit = SPOKEN_UNITS[normalizeSpeech(words[index + 2] ?? '')]
+      const linked = normalizeSpeech(words[index + 1] ?? '') === 'y' && unit !== undefined && unit < 10
+      if (linked) {
+        out.push(String(tens + unit))
+        index += 2
+      } else {
+        out.push(String(tens))
+      }
+      continue
+    }
+    const unit = SPOKEN_UNITS[word]
+    out.push(unit !== undefined ? String(unit) : words[index])
+  }
+  return out.join(' ')
+}
+
+/** Une los dígitos dichos por separado: "0 1 2" → "012". */
+const joinDigits = (text: string) => text.replace(/(\d) (?=\d)/g, '$1')
+
+/** Una contraseña conserva sus espacios; solo los números dichos se vuelven cifras. */
+function spokenPassword(text: string): string {
+  return joinDigits(numberWordsToDigits(text))
+}
+
 function spokenEmail(text: string): string {
-  return text
+  return numberWordsToDigits(text)
     .toLowerCase()
     .split(/\s+/)
     .map((word) => SPOKEN_SYMBOLS[word] ?? word)
@@ -64,10 +109,16 @@ function toFieldValue(field: TextField, spoken: string): string {
   const text = spoken.trim()
   if (!(field instanceof HTMLInputElement)) return text
   if (field.type === 'email') return spokenEmail(text)
+  if (field.type === 'password') return spokenPassword(text)
   if (field.type === 'time') return toTime(text) ?? text
   if (field.type === 'date') return toIsoDate(text) ?? text
   if (field.type === 'number') return text.replace(',', '.').match(/-?\d+(\.\d+)?/)?.[0] ?? text
   return text
+}
+
+/** Muestra u oculta la contraseña del login, pulsando su botón de ojo. */
+export function togglePasswordVisibility(): boolean {
+  return clickButtonNamed('mostrar contraseña') || clickButtonNamed('ocultar contraseña')
 }
 
 /** Escribe en el buscador de la pantalla y lo enfoca. */

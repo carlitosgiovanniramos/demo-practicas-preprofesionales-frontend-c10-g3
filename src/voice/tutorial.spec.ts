@@ -21,9 +21,11 @@ describe('voice tutorial', () => {
 
     const options = vi.mocked(Swal.fire).mock.calls[0][0] as unknown as { html: string; title: string }
     expect(options.title).toContain('comandos de voz')
-    for (const example of ['ofertas', 'registrar horas', 'llenar', 'clic en', 'manos libres', 'F2']) {
+    for (const example of ['ofertas', 'registrar horas', 'llenar', 'clic en', 'manos libres', 'F2', 'visible', 'cero']) {
       expect(options.html).toContain(example)
     }
+    // Agrupado en secciones desplegables para no sobrecargar el modal.
+    expect(options.html.match(/<details/g)?.length).toBeGreaterThanOrEqual(4)
   })
 
   it('al mostrarse queda marcado para no repetirse en la sesión', async () => {

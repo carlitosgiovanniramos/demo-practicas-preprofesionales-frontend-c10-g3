@@ -44,7 +44,7 @@ function FloatingControl({
         type="button"
         size="icon"
         variant={pressed ? 'default' : 'outline'}
-        className="size-11 rounded-full bg-surface shadow-md"
+        className="size-11 rounded-full shadow-md"
         aria-pressed={pressed}
         aria-label={label}
         onClick={onClick}
@@ -53,7 +53,7 @@ function FloatingControl({
       </Button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-12 font-medium text-surface opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute left-1/2 top-full z-[110] mt-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-12 font-medium text-surface opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
       >
         {label}
       </span>
@@ -114,7 +114,7 @@ export function VoiceCommandButton({ getCommands, fallback, variant = 'inline' }
 
   if (floating) {
     return (
-      <div className="fixed left-4 top-4 z-50 flex items-center gap-2">
+      <div className="fixed left-4 top-4 z-[100] flex items-center gap-2">
         <FloatingControl label={micLabel} pressed={listening} onClick={onMicClick}>
           <Mic aria-hidden="true" className="size-5" />
         </FloatingControl>

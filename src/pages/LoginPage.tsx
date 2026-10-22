@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { showErrorAlert } from '@/lib/alert'
 import { buildLoginCommands } from '@/voice/commands'
-import { fillFieldByHint, submitForm, voiceFallback } from '@/voice/actions'
+import { fillFieldByHint, submitForm, togglePasswordVisibility, voiceFallback } from '@/voice/actions'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
 import { Eye, EyeOff } from 'lucide-react'
 import { ApiError } from '@/api/client'
@@ -93,7 +93,13 @@ export function LoginPage() {
       {/* Control de voz flotante: arriba a la izquierda, solo en el login. */}
       <VoiceCommandButton
         variant="floating"
-        getCommands={() => buildLoginCommands({ submit: submitForm, fillByHint: fillFieldByHint })}
+        getCommands={() =>
+          buildLoginCommands({
+            submit: submitForm,
+            fillByHint: fillFieldByHint,
+            togglePassword: togglePasswordVisibility,
+          })
+        }
         fallback={voiceFallback}
       />
       <div className="w-full max-w-[420px]">

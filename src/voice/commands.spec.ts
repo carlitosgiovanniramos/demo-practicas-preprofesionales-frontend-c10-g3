@@ -67,7 +67,7 @@ describe('matchVoice', () => {
 
 describe('buildLoginCommands', () => {
   it('inicia sesión con voz y llena el correo y la contraseña por su nombre', () => {
-    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true) }
+    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true) }
     const commands = buildLoginCommands(actions)
 
     matchVoice('iniciar sesion', commands)?.command.run()
@@ -79,6 +79,18 @@ describe('buildLoginCommands', () => {
     expect(actions.submit).toHaveBeenCalledOnce()
     expect(actions.fillByHint).toHaveBeenNthCalledWith(1, 'correo', 'ana arroba uta')
     expect(actions.fillByHint).toHaveBeenNthCalledWith(2, 'contraseña', 'secreta')
+  })
+})
+
+describe('buildLoginCommands password visibility', () => {
+  it('"visible" muestra u oculta la contraseña', () => {
+    const actions = { submit: vi.fn(() => true), fillByHint: vi.fn(() => true), togglePassword: vi.fn(() => true) }
+    const commands = buildLoginCommands(actions)
+
+    matchVoice('visible', commands)?.command.run()
+    matchVoice('mostrar contraseña', commands)?.command.run()
+
+    expect(actions.togglePassword).toHaveBeenCalledTimes(2)
   })
 })
 
