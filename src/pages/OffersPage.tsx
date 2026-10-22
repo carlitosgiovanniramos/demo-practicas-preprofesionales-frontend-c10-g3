@@ -1,3 +1,4 @@
+import { Briefcase, SearchX } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '@/api/client'
@@ -149,11 +150,13 @@ export function OffersPage() {
         empty={
           query || modalityFilter !== ALL_MODALITIES ? (
             <EmptyState
+              icon={SearchX}
               title="Ninguna oferta coincide con la búsqueda"
               description="Probá con otras palabras o quitá el filtro de modalidad."
             />
           ) : (
             <EmptyState
+              icon={Briefcase}
               title="No hay ofertas publicadas para este periodo"
               description="Vuelve a revisar más adelante."
             />

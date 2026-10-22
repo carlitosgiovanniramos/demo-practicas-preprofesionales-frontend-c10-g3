@@ -1,3 +1,4 @@
+import { ClipboardCheck, Users } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -176,12 +177,14 @@ function StudentsView({ rows }: { rows: StudentRow[] }) {
       >
         {rows.length === 0 ? (
           <EmptyState
+            icon={Users}
             title="Todavía no tienes practicantes asignados"
             description="Cuando la coordinación te asigne uno, aparece acá."
           />
         ) : null}
         {rows.length > 0 && noneInQueue ? (
           <EmptyState
+            icon={ClipboardCheck}
             title="Ningún practicante en esta cola"
             description="Cambiá el filtro para ver al resto."
           />

@@ -1,3 +1,4 @@
+import { SearchX, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { type Application, type ApplicationStatus, listMine } from '@/api/applications'
@@ -67,6 +68,7 @@ function ApplicationsBody({ applications, error, filtered }: { applications: App
   if (applications.length === 0 && filtered) {
     return (
       <EmptyState
+        icon={SearchX}
         title="Ninguna postulación coincide"
         description="Probá con otra búsqueda o cambiá el estado."
       />
@@ -75,6 +77,7 @@ function ApplicationsBody({ applications, error, filtered }: { applications: App
   if (applications.length === 0) {
     return (
       <EmptyState
+        icon={Send}
         title="Todavía no has postulado a ninguna oferta"
         description="Mirá las ofertas abiertas y postulá a la que te sirva."
         action={

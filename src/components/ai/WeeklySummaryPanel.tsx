@@ -1,3 +1,4 @@
+import { CalendarX } from 'lucide-react'
 import { useId, useState } from 'react'
 import { type WeeklySummary, weeklySummary } from '@/api/ai'
 import { ApiError } from '@/api/client'
@@ -165,6 +166,7 @@ function ResultArea({ status, errorKind, summary, ...handlers }: ResultAreaProps
   if (summary.draft === null) {
     return (
       <EmptyState
+        icon={CalendarX}
         title="No hay jornadas en esa semana"
         description="Registrá tus horas y volvé a generar el borrador."
       />

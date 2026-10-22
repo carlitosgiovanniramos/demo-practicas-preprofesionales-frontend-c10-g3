@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PanelProps {
@@ -59,11 +60,19 @@ interface EmptyStateProps {
   title: ReactNode
   description?: ReactNode
   action?: ReactNode
+  /** Icono vectorial (lucide) que explica el contexto vacío; es decorativo para lectores de pantalla. */
+  icon?: LucideIcon
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+/** Estado vacío: icono contextual opcional, título, descripción y una acción. */
+export function EmptyState({ title, description, action, icon: Icon }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center gap-1.5 px-5 py-14 text-center">
+      {Icon ? (
+        <span className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-soft text-stamp">
+          <Icon aria-hidden="true" focusable="false" className="size-7" strokeWidth={1.75} />
+        </span>
+      ) : null}
       <p className="font-display text-16 font-semibold text-ink">{title}</p>
       {description ? <p className="text-14 text-inkMid">{description}</p> : null}
       {action ? <div className="mt-3">{action}</div> : null}

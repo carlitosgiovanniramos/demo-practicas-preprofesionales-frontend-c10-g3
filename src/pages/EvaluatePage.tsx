@@ -1,3 +1,4 @@
+import { Award, UserX } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
@@ -59,7 +60,7 @@ export function EvaluatePage() {
   }
 
   if (placement === null) {
-    return <EmptyState title="No se encontró este practicante" />
+    return <EmptyState icon={UserX} title="No se encontró este practicante" />
   }
 
   const period = periodFromStartDate(placement.startDate)
@@ -111,6 +112,7 @@ export function EvaluatePage() {
       {submitted ? (
         <Panel>
           <EmptyState
+            icon={Award}
             title="Evaluación enviada"
             description="La coordinación ya la puede ver en el acta del periodo."
             action={

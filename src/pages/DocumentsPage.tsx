@@ -1,3 +1,4 @@
+import { FileText, GraduationCap } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, useRef, useState } from 'react'
 import { ApiError, api } from '@/api/client'
 import { Chip } from '@/components/Chip'
@@ -72,6 +73,7 @@ function DocumentsList({ documents }: { documents: LocalDocument[] | undefined }
     return (
       <Section title="Todos tus documentos">
         <EmptyState
+          icon={FileText}
           title="Todavía no has subido documentos"
           description="Empieza por el convenio y el seguro."
         />
@@ -124,6 +126,7 @@ export function DocumentsPage() {
     return (
       <Panel>
         <EmptyState
+          icon={GraduationCap}
           title="No tienes una práctica activa todavía"
           description="Cuando la coordinación active tu plaza, vas a poder subir documentos."
         />
