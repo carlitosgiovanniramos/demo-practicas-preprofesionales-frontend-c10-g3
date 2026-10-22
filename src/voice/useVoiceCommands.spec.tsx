@@ -76,14 +76,14 @@ describe('useVoiceCommands', () => {
     expect(search).toHaveBeenCalledWith('Ana Pérez')
   })
 
-  it('confirma en voz y con un aviso verde cuando el comando funciona', () => {
+  it('confirma en voz cuando el comando funciona, sin mostrar aviso visual', () => {
     const { result } = renderHook(() => useVoiceCommands(getCommands))
     act(() => result.current.toggle())
 
     heard('ofertas')
 
     expect(speak).toHaveBeenCalledWith('Listo')
-    expect(Swal.fire).toHaveBeenCalledWith(expect.objectContaining({ icon: 'success', title: 'Listo' }))
+    expect(Swal.fire).not.toHaveBeenCalled()
   })
 
   it('avisa en un toast cuando la acción no se puede hacer en la pantalla', () => {

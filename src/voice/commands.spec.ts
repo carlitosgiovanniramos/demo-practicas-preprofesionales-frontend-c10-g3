@@ -90,6 +90,14 @@ describe('buildVoiceCommands', () => {
     expect(actions.create).toHaveBeenCalledOnce()
   })
 
+  it('reconoce las acciones de crear con el nombre que ve cada rol en pantalla', () => {
+    actions.create.mockClear()
+    matchVoice('registrar horas', commands)?.command.run()
+    matchVoice('Registrar hora', commands)?.command.run()
+    matchVoice('publicar oferta', commands)?.command.run()
+    expect(actions.create).toHaveBeenCalledTimes(3)
+  })
+
   it('busca con el texto dicho después de "buscar"', () => {
     const match = matchVoice('buscar practica de datos', commands)
     match?.command.run(match.argument)

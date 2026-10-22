@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { showErrorAlert, showSuccessToast } from '@/lib/alert'
+import { showErrorAlert } from '@/lib/alert'
 import { speak } from '@/lib/speech'
 import { matchVoice, type VoiceCommand } from './commands'
 
@@ -86,10 +86,9 @@ export function useVoiceCommands(getCommands: () => VoiceCommand[]) {
       return
     }
 
-    const confirmation = match.command.feedback?.(match.argument) ?? 'Listo'
+    // Éxito: solo se confirma en voz. Los avisos visuales son para los errores.
     setError(null)
-    showSuccessToast(confirmation)
-    speak(confirmation)
+    speak(match.command.feedback?.(match.argument) ?? 'Listo')
   }, [])
 
   const start = useCallback(() => {

@@ -3,7 +3,6 @@ import Swal from 'sweetalert2'
 const DEFAULT_TITLE = 'No se pudo completar la acción'
 /** Un error largo tiene que alcanzar a leerse; el usuario también puede cerrarlo antes. */
 const ERROR_TIMER_MS = 8000
-const SUCCESS_TIMER_MS = 4000
 
 /** Escapa el texto para insertarlo como HTML sin que el navegador lo interprete como markup. */
 function escapeHtml(text: string): string {
@@ -33,15 +32,3 @@ export function showErrorAlert(message: string, title: string = DEFAULT_TITLE) {
   })
 }
 
-/** Confirmación breve en la parte superior, por ejemplo al completar un comando de voz. */
-export function showSuccessToast(message: string) {
-  return Swal.fire({
-    toast: true,
-    position: 'top',
-    icon: 'success',
-    title: message,
-    showConfirmButton: false,
-    timer: SUCCESS_TIMER_MS,
-    timerProgressBar: true,
-  })
-}

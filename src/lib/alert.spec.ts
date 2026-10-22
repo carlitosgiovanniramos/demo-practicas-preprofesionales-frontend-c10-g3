@@ -1,6 +1,6 @@
 import Swal from 'sweetalert2'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { showErrorAlert, showSuccessToast } from './alert'
+import { showErrorAlert } from './alert'
 
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }))
 
@@ -46,12 +46,3 @@ describe('showErrorAlert', () => {
   })
 })
 
-describe('showSuccessToast', () => {
-  it('confirma una acción con un toast verde en la parte superior', () => {
-    showSuccessToast('Abriendo Ofertas')
-
-    expect(Swal.fire).toHaveBeenCalledWith(
-      expect.objectContaining({ toast: true, position: 'top', icon: 'success', title: 'Abriendo Ofertas' }),
-    )
-  })
-})

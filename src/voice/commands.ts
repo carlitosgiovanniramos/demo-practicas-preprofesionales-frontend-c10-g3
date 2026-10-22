@@ -114,7 +114,8 @@ export function buildVoiceCommands(navTargets: NavTarget[], actions: VoiceAction
     },
     {
       id: 'create',
-      phrases: ['nuevo', 'crear', 'nuevo registro', 'crear nuevo'],
+      // Frases de cada rol: el estudiante ve "Registrar horas", la empresa "Publicar oferta".
+      phrases: ['nuevo', 'crear', 'nuevo registro', 'crear nuevo', 'registrar', 'registrar horas', 'registrar hora', 'publicar oferta'],
       feedback: () => 'Creando',
       run: actions.create,
     },
