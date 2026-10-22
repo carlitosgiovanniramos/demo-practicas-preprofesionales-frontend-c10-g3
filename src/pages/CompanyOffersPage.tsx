@@ -30,7 +30,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { parseLocalDate } from '@/lib/date'
+import { formatPeriod } from '@/lib/date'
 import { plural } from '@/lib/utils'
 
 type OfferActionState = 'publishing' | 'closing' | 'published' | 'closed' | null
@@ -55,16 +55,6 @@ const EMPTY_FORM: CreateOfferFormState = {
   requiredHours: '',
   periodStart: '',
   periodEnd: '',
-}
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function formatPeriod(periodStart: string, periodEnd: string): string {
-  return `${formatDate(periodStart)} – ${formatDate(periodEnd)}`
 }
 
 function acceptedCount(offer: CompanyOffer): number {

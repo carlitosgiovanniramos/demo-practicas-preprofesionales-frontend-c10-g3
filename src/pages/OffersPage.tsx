@@ -7,20 +7,10 @@ import { OfferCard, OfferGrid } from '@/components/OfferCard'
 import { PageHeader } from '@/components/PageHeader'
 import { AsyncSection, EmptyState } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
-import { parseLocalDate } from '@/lib/date'
+import { formatPeriod } from '@/lib/date'
 import { plural } from '@/lib/utils'
 
 const ALL_MODALITIES = 'TODAS'
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function formatPeriod(periodStart: string, periodEnd: string): string {
-  return `${formatDate(periodStart)} – ${formatDate(periodEnd)}`
-}
 
 interface ToolbarProps {
   modalities: string[]

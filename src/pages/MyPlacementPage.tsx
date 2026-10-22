@@ -1,4 +1,3 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { HeroCard, HeroPanel } from '@/components/HeroPanel'
 import { PageHeader } from '@/components/PageHeader'
@@ -9,22 +8,14 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Ledger } from '@/components/ledger/Ledger'
 import { LedgerRow } from '@/components/ledger/LedgerRow'
-import { parseLocalDate } from '@/lib/date'
+import { formatPeriod } from '@/lib/date'
 import { type HoursSummary, summarizeHours } from '@/lib/hours'
 import { plural } from '@/lib/utils'
-import { db, type LocalDocument, type LocalHourLog } from '@/offline/db'
+import { type LocalDocument, type LocalHourLog } from '@/offline/db'
 import { useHourLogs } from '@/offline/hooks/useHourLogs'
 import { usePlacement } from '@/offline/hooks/usePlacement'
-
-function formatDate(dateValue: string): string {
-  const parsed = parseLocalDate(dateValue)
-  if (Number.isNaN(parsed.getTime())) return dateValue
-  return new Intl.DateTimeFormat('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed)
-}
-
-function formatPeriod(startDate: string, endDate: string): string {
-  return `${formatDate(startDate)} – ${formatDate(endDate)}`
-}
+import { usePlacementDocuments } from '@/offline/hooks/usePlacementDocuments'
+import { HourLedgerMeasures } from '@/components/ledger/HourLedgerParts'
 
 function DataRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -186,11 +177,7 @@ function RecentLogs({ logs }: { logs: LocalHourLog[] | undefined }) {
       <Ledger>
         {recent.map((log, index) => (
           <LedgerRow key={index} syncState={log.syncState}>
-            <span className="font-data text-14 text-ink sm:w-28">{formatDate(log.date)}</span>
-            <span className="font-data text-13 text-inkSoft sm:w-28">
-              {log.startTime}–{log.endTime}
-            </span>
-            <span className="font-data text-14 text-ink sm:w-14">{log.hours}</span>
+            <HourLedgerMeasures date={log.date} startTime={log.startTime} endTime={log.endTime} hours={log.hours} />
             <span className="flex-1 text-14 text-inkBody">{log.activity}</span>
             <span className="sm:w-32 sm:text-right">
               <StatusBadge status={log.status} />
@@ -205,10 +192,7 @@ function RecentLogs({ logs }: { logs: LocalHourLog[] | undefined }) {
 export function MyPlacementPage() {
   const placement = usePlacement()
   const logs = useHourLogs(placement?.id ?? -1)
-  const documents = useLiveQuery<LocalDocument[] | undefined>(async () => {
-    if (!placement) return undefined
-    return db.documents.where('placementId').equals(placement.id).toArray()
-  }, [placement?.id])
+  const documents = usePlacementDocuments(placement)
 
   if (placement === undefined) {
     return <LoadingState>Cargando tu práctica…</LoadingState>
