@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Button } from '@/components/ui/button'
+import { showErrorAlert } from '@/lib/alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -115,7 +116,6 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
   const [activity, setActivity] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const confirmationLabel = formatDateForConfirmation(date)
   const durationHours = computeDurationHours(startTime, endTime)
@@ -134,7 +134,6 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
-    setSubmitError(null)
 
     const nextErrors = buildFormErrors({ date, startTime, endTime, hours, activity })
     if (Object.keys(nextErrors).length > 0) {
@@ -204,7 +203,7 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
       resetForm()
       onSaved?.()
     } catch {
-      setSubmitError('No se pudo guardar el registro en este dispositivo. Intenta de nuevo.')
+      showErrorAlert('No se pudo guardar el registro en este dispositivo. Intenta de nuevo.', 'No se pudo guardar')
     } finally {
       setSubmitting(false)
     }
@@ -310,11 +309,6 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
         <FieldError id="hourlog-activity-error" message={errors.activity} />
       </div>
 
-      {submitError ? (
-        <p role="alert" className="text-14 text-void">
-          {submitError}
-        </p>
-      ) : null}
 
       <p className="text-12 text-inkSoft">
         Se guarda en este dispositivo aunque no tengas conexión. Se sincroniza solo cuando vuelvas a estar en línea

@@ -2,7 +2,7 @@ import { type FormEvent, type KeyboardEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ApiError } from '@/api/client'
 import { submitEvaluation } from '@/api/evaluations'
-import { FormAlert } from '@/components/FormAlert'
+import { showErrorAlert } from '@/lib/alert'
 import { EmptyState } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
 import {
@@ -140,7 +140,6 @@ function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
   const [comment, setComment] = useState('')
   const [errors, setErrors] = useState<Partial<Record<ScoreField, string>>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
   // Con el foco en un criterio, 1–5 pone ese puntaje. Sin foco en un criterio devuelve
@@ -166,7 +165,6 @@ function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
-    setSubmitError(null)
 
     const nextErrors: Partial<Record<ScoreField, string>> = {}
     for (const { field } of CRITERIA) {
@@ -195,7 +193,7 @@ function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
       })
       setSubmitted(true)
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : 'No se pudo enviar la evaluación')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo enviar la evaluación')
     } finally {
       setSubmitting(false)
     }
@@ -246,8 +244,6 @@ function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
             placeholder="Observaciones sobre el desempeño del practicante"
           />
         </div>
-
-        <FormAlert message={submitError} />
       </DialogBody>
 
       <DialogFooter>

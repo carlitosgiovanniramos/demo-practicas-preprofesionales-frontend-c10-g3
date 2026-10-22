@@ -19,6 +19,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate } from '@/lib/date'
+import { showErrorAlert } from '@/lib/alert'
 import { summarizeHours } from '@/lib/hours'
 import { plural } from '@/lib/utils'
 import { db, type LocalHourLog } from '@/offline/db'
@@ -234,7 +235,6 @@ export function ReviewHoursPage() {
   )
 
   const [actionState, setActionState] = useState<Record<number, ActionState>>({})
-  const [reviewError, setReviewError] = useState<string | null>(null)
   const [rejectingLog, setRejectingLog] = useState<LocalHourLog | null>(null)
 
   // La evaluación vive en un modal. ?evaluar=1 lo abre al llegar (enlace directo o redirección).
@@ -276,7 +276,6 @@ export function ReviewHoursPage() {
   ])
 
   async function reviewLog(logId: number, status: 'APPROVED' | 'REJECTED', note?: string) {
-    setReviewError(null)
     setActionState((prev) => ({ ...prev, [logId]: status === 'APPROVED' ? 'approving' : 'rejecting' }))
     try {
       await api(`/hour-logs/${logId}/review`, {
@@ -286,7 +285,7 @@ export function ReviewHoursPage() {
       await syncNow()
       setActionState((prev) => ({ ...prev, [logId]: status === 'APPROVED' ? 'approved' : 'rejected' }))
     } catch (err) {
-      setReviewError(err instanceof ApiError ? err.message : 'No se pudo enviar la revisión')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo enviar la revisión')
       setActionState((prev) => ({ ...prev, [logId]: null }))
     }
   }
@@ -325,12 +324,6 @@ export function ReviewHoursPage() {
       />
 
       <HoursProgressPanel hours={hours} note={pendingNote(pendingCount)} />
-
-      {reviewError ? (
-        <p role="alert" className="rounded-lg bg-chipVoid px-4 py-3 text-13 text-void">
-          {reviewError}
-        </p>
-      ) : null}
 
       <Panel
         toolbar={

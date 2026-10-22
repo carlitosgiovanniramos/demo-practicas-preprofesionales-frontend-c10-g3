@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { showErrorAlert } from '@/lib/alert'
 import { Eye, EyeOff } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/AuthContext'
@@ -78,7 +79,7 @@ export function LoginPage() {
       await login(email.trim(), password)
       navigate('/')
     } catch (err) {
-      setError(loginFailureMessage(err))
+      showErrorAlert(loginFailureMessage(err), 'No se pudo iniciar sesión')
     } finally {
       setSubmitting(false)
     }

@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { showErrorAlert } from '@/lib/alert'
 import { formatDate } from '@/lib/date'
 import { cn, plural } from '@/lib/utils'
 import { db, type LocalDocument } from '@/offline/db'
@@ -113,7 +114,6 @@ export function DocumentsPage() {
 
   const [kind, setKind] = useState<DocumentKind>('AGREEMENT')
   const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -135,10 +135,9 @@ export function DocumentsPage() {
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setUploadError(null)
 
     if (!file) {
-      setUploadError('Selecciona un archivo')
+      showErrorAlert('Selecciona un archivo', 'Falta el archivo')
       return
     }
 
@@ -161,7 +160,7 @@ export function DocumentsPage() {
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
-      setUploadError(err instanceof ApiError ? err.message : 'No se pudo subir el documento')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo subir el documento')
     } finally {
       setUploading(false)
     }
@@ -226,12 +225,6 @@ export function DocumentsPage() {
               </div>
             </div>
           </div>
-
-          {uploadError ? (
-            <p role="alert" className="rounded-md bg-chipVoid px-3 py-2.5 text-13 text-void">
-              {uploadError}
-            </p>
-          ) : null}
 
           <Button type="submit" disabled={uploading} className="w-full sm:w-auto sm:self-end">
             {uploading ? 'Subiendo…' : 'Subir documento'}

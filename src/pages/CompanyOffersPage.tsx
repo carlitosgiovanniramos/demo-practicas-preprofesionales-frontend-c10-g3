@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { showErrorAlert } from '@/lib/alert'
 import { focusFirstInvalid } from '@/lib/form-focus'
 import { Link } from 'react-router-dom'
 import {
@@ -191,7 +192,6 @@ interface CreateOfferDialogProps {
   form: CreateOfferFormState
   formErrors: CreateOfferFormErrors
   creating: boolean
-  createError: string | null
   onFieldChange: (field: keyof CreateOfferFormState, value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -202,7 +202,6 @@ function CreateOfferDialog({
   form,
   formErrors,
   creating,
-  createError,
   onFieldChange,
   onSubmit,
 }: CreateOfferDialogProps) {
@@ -313,11 +312,6 @@ function CreateOfferDialog({
               </div>
             </div>
 
-            {createError ? (
-              <p role="alert" className="rounded-md bg-chipVoid px-3 py-2.5 text-13 text-void">
-                {createError}
-              </p>
-            ) : null}
           </DialogBody>
 
           <DialogFooter>
@@ -338,13 +332,11 @@ export function CompanyOffersPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [actionState, setActionState] = useState<Record<number, OfferActionState>>({})
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState<CreateOfferFormState>(EMPTY_FORM)
   const [formErrors, setFormErrors] = useState<CreateOfferFormErrors>({})
   const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState(ALL_STATUSES)
@@ -389,27 +381,25 @@ export function CompanyOffersPage() {
   const myCompany = companies?.find((company) => company.id === user?.companyId)
 
   async function handlePublish(offerId: number) {
-    setActionError(null)
     setActionState((prev) => ({ ...prev, [offerId]: 'publishing' }))
     try {
       await publishOffer(offerId)
       await refetchOffers()
       setActionState((prev) => ({ ...prev, [offerId]: 'published' }))
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'No se pudo publicar la oferta')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo publicar la oferta')
       setActionState((prev) => ({ ...prev, [offerId]: null }))
     }
   }
 
   async function handleClose(offerId: number) {
-    setActionError(null)
     setActionState((prev) => ({ ...prev, [offerId]: 'closing' }))
     try {
       await closeOffer(offerId)
       await refetchOffers()
       setActionState((prev) => ({ ...prev, [offerId]: 'closed' }))
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'No se pudo cerrar la oferta')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo cerrar la oferta')
       setActionState((prev) => ({ ...prev, [offerId]: null }))
     }
   }
@@ -417,7 +407,6 @@ export function CompanyOffersPage() {
   function openDialog() {
     setForm(EMPTY_FORM)
     setFormErrors({})
-    setCreateError(null)
     setDialogOpen(true)
   }
 
@@ -427,10 +416,9 @@ export function CompanyOffersPage() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setCreateError(null)
 
     if (!user?.companyId) {
-      setCreateError('Tu usuario no tiene una empresa asociada')
+      showErrorAlert('Tu usuario no tiene una empresa asociada', 'No se pudo crear la oferta')
       return
     }
 
@@ -460,7 +448,7 @@ export function CompanyOffersPage() {
       await refetchOffers()
       setDialogOpen(false)
     } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'No se pudo crear la oferta')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo crear la oferta')
     } finally {
       setCreating(false)
     }
@@ -482,11 +470,6 @@ export function CompanyOffersPage() {
 
       {offers ? <CompanyOffersStats offers={offers} /> : null}
 
-      {actionError ? (
-        <p role="alert" className="rounded-lg bg-chipVoid px-4 py-3 text-13 text-void">
-          {actionError}
-        </p>
-      ) : null}
 
       {offers && offers.length > 0 ? (
         <div className="flex flex-col gap-3">
@@ -570,7 +553,7 @@ export function CompanyOffersPage() {
         form={form}
         formErrors={formErrors}
         creating={creating}
-        createError={createError}
+
         onFieldChange={handleFieldChange}
         onSubmit={handleCreate}
       />

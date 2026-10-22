@@ -7,6 +7,7 @@ import {
   listApplicationsForOffer,
 } from '@/api/companies'
 import { ApiError } from '@/api/client'
+import { showErrorAlert } from '@/lib/alert'
 import { type Offer } from '@/api/offers'
 import { FilterTabs } from '@/components/FilterTabs'
 import { Pagination } from '@/components/Pagination'
@@ -79,7 +80,6 @@ export function OfferApplicationsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [decisionState, setDecisionState] = useState<Record<number, DecisionState>>({})
-  const [decisionError, setDecisionError] = useState<string | null>(null)
 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
@@ -118,13 +118,12 @@ export function OfferApplicationsPage() {
   }, [offerId])
 
   async function decide(applicationId: number, status: ApplicationDecision, state: DecisionState) {
-    setDecisionError(null)
     setDecisionState((prev) => ({ ...prev, [applicationId]: state }))
     try {
       await decideApplication(applicationId, status)
       await refetchApplications()
     } catch (err) {
-      setDecisionError(err instanceof ApiError ? err.message : 'No se pudo enviar la decisión')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo enviar la decisión')
     } finally {
       setDecisionState((prev) => ({ ...prev, [applicationId]: null }))
     }
@@ -159,12 +158,6 @@ export function OfferApplicationsPage() {
       />
 
       <OfferAffinityPanel offerId={offerId} />
-
-      {decisionError ? (
-        <p role="alert" className="rounded-lg bg-chipVoid px-4 py-3 text-13 text-void">
-          {decisionError}
-        </p>
-      ) : null}
 
       <Panel
         toolbar={

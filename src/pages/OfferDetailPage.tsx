@@ -15,7 +15,7 @@ import { formatDate, formatPeriod } from '@/lib/date'
 import { plural } from '@/lib/utils'
 import { loadOfferInto } from '@/lib/offer-loader'
 import { OfferLoadError } from '@/components/OfferLoadError'
-import { FormAlert } from '@/components/FormAlert'
+import { showErrorAlert } from '@/lib/alert'
 
 // El DTO del backend exige @MinLength(20) en la motivación.
 const MIN_MOTIVATION_LENGTH = 20
@@ -99,7 +99,6 @@ export function OfferDetailPage() {
   const [motivation, setMotivation] = useState('')
   const [motivationError, setMotivationError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -124,7 +123,6 @@ export function OfferDetailPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSubmitError(null)
 
     const trimmed = motivation.trim()
     if (trimmed.length < MIN_MOTIVATION_LENGTH) {
@@ -138,7 +136,7 @@ export function OfferDetailPage() {
       const created = await apply(offerId, trimmed)
       setExistingApplication(created)
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : 'No se pudo enviar la postulación')
+      showErrorAlert(err instanceof ApiError ? err.message : 'No se pudo enviar la postulación')
     } finally {
       setSubmitting(false)
     }
@@ -216,8 +214,6 @@ export function OfferDetailPage() {
                 </p>
               ) : null}
             </div>
-
-            <FormAlert message={submitError} />
 
             <Button type="submit" disabled={submitting} className="self-start">
               {submitting ? 'Enviando…' : 'Enviar postulación'}

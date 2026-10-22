@@ -3,9 +3,11 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/AuthContext'
+import Swal from 'sweetalert2'
 import { LoginPage } from './LoginPage'
 
 vi.mock('@/auth/AuthContext', () => ({ useAuth: vi.fn() }))
+vi.mock('sweetalert2', () => ({ default: { fire: vi.fn() } }))
 
 const login = vi.fn()
 
@@ -64,6 +66,6 @@ describe('LoginPage usability', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Credenciales inválidas'))
+    await waitFor(() => expect((vi.mocked(Swal.fire).mock.calls[0]?.[0] as unknown as { html: string }).html).toBe('Credenciales inválidas'))
   })
 })
