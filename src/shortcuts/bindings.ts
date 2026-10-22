@@ -24,21 +24,39 @@ export type Overrides = Record<string, string[]>
 
 export type MatchResult = { kind: 'match'; id: string } | { kind: 'prefix' } | { kind: 'none' }
 
+export type ShortcutRole = 'STUDENT' | 'TUTOR' | 'COMPANY' | 'COORDINATOR'
+
+// La acción principal ("n") depende de lo que el rol puede crear. El tutor y el
+// coordinador no crean nada desde el menú, así que no la reciben.
+const NEW_ACTION_BY_ROLE: Partial<Record<ShortcutRole, string>> = {
+  STUDENT: 'Registrar horas',
+  COMPANY: 'Publicar oferta',
+}
+
+const GENERIC_NEW_LABEL = 'Acción principal de la pantalla (crear o registrar)'
+
 const BASE_ACTIONS: ShortcutAction[] = [
   { id: 'search', label: 'Ir al buscador de la pantalla', group: 'Acciones', defaultKeys: '/' },
-  { id: 'new', label: 'Acción principal de la pantalla (crear o registrar)', group: 'Acciones', defaultKeys: 'n' },
   { id: 'help', label: 'Mostrar esta lista de atajos', group: 'Ayuda', defaultKeys: '?' },
 ]
 
-/** Acciones disponibles: las generales más un atajo numérico por cada elemento del menú. */
-export function buildActions(navCount: number): ShortcutAction[] {
+/**
+ * Acciones disponibles para un rol: búsqueda y ayuda para todos, la acción principal
+ * solo cuando el rol tiene algo que crear, y un atajo numérico por cada elemento del menú.
+ */
+export function buildActions(navCount: number, role?: ShortcutRole): ShortcutAction[] {
+  // Sin rol (uso genérico) se conserva la acción principal con su nombre general.
+  const newLabel = role === undefined ? GENERIC_NEW_LABEL : NEW_ACTION_BY_ROLE[role]
+  const newActions: ShortcutAction[] = newLabel
+    ? [{ id: 'new', label: newLabel, group: 'Acciones', defaultKeys: 'n' }]
+    : []
   const navActions: ShortcutAction[] = Array.from({ length: Math.min(navCount, MAX_NAV_SHORTCUTS) }, (_, index) => ({
     id: `nav-${index + 1}`,
     label: `Ir a la sección ${index + 1} del menú`,
     group: 'Navegación',
     defaultKeys: String(index + 1),
   }))
-  return [...BASE_ACTIONS, ...navActions]
+  return [BASE_ACTIONS[0], ...newActions, BASE_ACTIONS[1], ...navActions]
 }
 
 /**

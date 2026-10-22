@@ -1,16 +1,17 @@
-import type { ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { SyncGutter, type SyncState } from './SyncGutter'
 
-interface LedgerRowProps {
+interface LedgerRowProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   syncState: SyncState
   children: ReactNode
   className?: string
 }
 
-export function LedgerRow({ syncState, children, className }: LedgerRowProps) {
+export function LedgerRow({ syncState, children, className, ...rest }: LedgerRowProps) {
   return (
     <div
+      {...rest}
       className={cn(
         'flex min-h-row items-stretch gap-3 px-[18px] py-2.5 transition-colors hover:bg-well',
         className,

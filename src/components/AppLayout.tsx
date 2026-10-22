@@ -65,7 +65,7 @@ export function AppLayout() {
     [role],
   )
   return (
-    <ShortcutsProvider navPaths={navPaths}>
+    <ShortcutsProvider navPaths={navPaths} role={role ?? undefined}>
       <AppFrame />
     </ShortcutsProvider>
   )

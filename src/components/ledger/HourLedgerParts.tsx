@@ -52,17 +52,29 @@ interface HourLedgerProps {
   actionsLabel?: string
   /** Celdas de la fila después de fecha, horario y horas (actividad, estado y acciones). */
   renderRest: (log: LocalHourLog) => ReactNode
+  /** Cada fila puede recibir el foco de los atajos (j/k) y marcarse como elemento de la lista. */
+  navigable?: boolean
 }
 
 /** Libro de horas: las más recientes primero, con la misma estructura en todas las pantallas. */
-export function HourLedger({ logs, statusRight = false, actionsLabel, renderRest }: HourLedgerProps) {
+export function HourLedger({ logs, statusRight = false, actionsLabel, renderRest, navigable = false }: HourLedgerProps) {
   return (
     <Ledger header={<HourLedgerColumnHeader statusRight={statusRight} actionsLabel={actionsLabel} />}>
       {logs
         .slice()
         .reverse()
         .map((log) => (
-          <LedgerRow key={log.id} syncState={log.syncState}>
+          <LedgerRow
+            key={log.id}
+            syncState={log.syncState}
+            {...(navigable
+              ? {
+                  'data-shortcut-item': '',
+                  tabIndex: -1,
+                  className: 'focus-visible:bg-well focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stamp',
+                }
+              : {})}
+          >
             <HourLedgerMeasures date={log.date} startTime={log.startTime} endTime={log.endTime} hours={log.hours} />
             {renderRest(log)}
           </LedgerRow>

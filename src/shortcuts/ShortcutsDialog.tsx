@@ -8,16 +8,40 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { type Bindings, type ShortcutAction, type ShortcutGroup, normalizeEventKey } from './bindings'
+import {
+  type Bindings,
+  type ShortcutAction,
+  type ShortcutGroup,
+  type ShortcutRole,
+  normalizeEventKey,
+} from './bindings'
+
+const ROLE_LABEL: Record<ShortcutRole, string> = {
+  STUDENT: 'Estudiante',
+  TUTOR: 'Tutor',
+  COMPANY: 'Empresa',
+  COORDINATOR: 'Coordinador',
+}
+
+interface ScreenActionInfo {
+  id: string
+  label: string
+  key: string
+}
 
 interface ShortcutsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   actions: ShortcutAction[]
   bindings: Bindings
+  /** Atajos de la pantalla que está abierta detrás; son fijos y solo se muestran. */
+  screenActions: ScreenActionInfo[]
+  role?: ShortcutRole
   /** Devuelve un mensaje de error si las teclas no se pueden asignar, o null si se guardaron. */
   onSetBinding: (id: string, steps: string[]) => string | null
   onReset: () => void
+  /** Devuelve el foco a la pantalla al cerrar la lista. */
+  onRestoreFocus: () => void
 }
 
 const GROUP_ORDER: ShortcutGroup[] = ['Acciones', 'Navegación', 'Ayuda']
@@ -41,7 +65,17 @@ function KeyCaps({ steps }: { steps: string[] }) {
  * Lista de atajos del usuario. Desde aquí se puede cambiar la tecla de cada acción: al
  * pulsar "Cambiar", la siguiente tecla se toma como nueva combinación. Esc cancela.
  */
-export function ShortcutsDialog({ open, onOpenChange, actions, bindings, onSetBinding, onReset }: ShortcutsDialogProps) {
+export function ShortcutsDialog({
+  open,
+  onOpenChange,
+  actions,
+  bindings,
+  screenActions,
+  role,
+  onSetBinding,
+  onReset,
+  onRestoreFocus,
+}: ShortcutsDialogProps) {
   const [recordingId, setRecordingId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -77,15 +111,37 @@ export function ShortcutsDialog({ open, onOpenChange, actions, bindings, onSetBi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          onRestoreFocus()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Atajos de teclado</DialogTitle>
           <DialogDescription>
-            Usalos sin el mouse. Los atajos no funcionan mientras escribís en un campo ni con una ventana abierta.
+            {role ? `Atajos para tu rol: ${ROLE_LABEL[role]}. ` : ''}
+            Los atajos no funcionan mientras escribís en un campo ni con una ventana abierta.
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className="flex flex-col gap-5">
+            {screenActions.length > 0 ? (
+              <section aria-labelledby="shortcut-group-screen" className="flex flex-col gap-2">
+                <h3 id="shortcut-group-screen" className="text-13 font-semibold text-inkMid">
+                  Esta pantalla
+                </h3>
+                <ul className="flex flex-col divide-y divide-paperRule rounded-xl border border-paperRule">
+                  {screenActions.map((action) => (
+                    <li key={action.id} className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5">
+                      <span className="text-14 text-ink">{action.label}</span>
+                      <KeyCaps steps={[action.key]} />
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-12 text-inkSoft">Estos atajos son fijos para cada pantalla.</p>
+              </section>
+            ) : null}
             {GROUP_ORDER.map((group) => {
               const groupActions = actions.filter((action) => action.group === group)
               if (groupActions.length === 0) return null

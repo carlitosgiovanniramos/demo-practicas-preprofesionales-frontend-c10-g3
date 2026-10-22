@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ShortcutsProvider } from './ShortcutsProvider'
+import { ShortcutsProvider, useScreenShortcuts } from './ShortcutsProvider'
 
 function LocationProbe() {
   const location = useLocation()
@@ -114,5 +114,76 @@ describe('ShortcutsProvider', () => {
 
     expect(await screen.findByText(/Esa tecla ya está usada por/)).toBeTruthy()
     expect(localStorage.getItem('shortcuts:v1')).toBeNull()
+  })
+})
+
+function ScreenWithShortcuts({ onJ, onDigitTwo }: { onJ: () => void; onDigitTwo: () => boolean }) {
+  useScreenShortcuts([
+    { id: 'screen-j', label: 'Siguiente registro', key: 'j', run: () => (onJ(), true) },
+    { id: 'screen-two', label: 'Solo si hay foco', key: '2', run: onDigitTwo },
+  ])
+  return <p>pantalla</p>
+}
+
+describe('focus after the shortcuts list', () => {
+  it('closing the list returns the focus to the element that had it before', async () => {
+    renderApp()
+    const search = screen.getByLabelText('Buscar en la lista')
+    search.focus()
+    fireEvent.keyDown(document.body, { key: '?' })
+    await screen.findByRole('dialog', { name: 'Atajos de teclado' })
+
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(search))
+  })
+})
+
+describe('screen-scoped shortcuts', () => {
+  it('a screen action runs for its key while that screen is mounted', () => {
+    const onJ = vi.fn()
+    render(
+      <MemoryRouter initialEntries={['/practicantes']}>
+        <ShortcutsProvider navPaths={['/practicantes']}>
+          <ScreenWithShortcuts onJ={onJ} onDigitTwo={() => false} />
+        </ShortcutsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.keyDown(document.body, { key: 'j' })
+
+    expect(onJ).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to the global shortcut when the screen action does not handle the key', async () => {
+    render(
+      <MemoryRouter initialEntries={['/practicantes']}>
+        <ShortcutsProvider navPaths={['/practicantes', '/horas']}>
+          <ScreenWithShortcuts onJ={vi.fn()} onDigitTwo={() => false} />
+          <LocationProbe />
+        </ShortcutsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.keyDown(document.body, { key: '2' })
+
+    await waitFor(() => expect(screen.getByTestId('path').textContent).toBe('/horas'))
+  })
+
+  it('a handled screen action keeps the global shortcut from firing', async () => {
+    render(
+      <MemoryRouter initialEntries={['/practicantes']}>
+        <ShortcutsProvider navPaths={['/practicantes', '/horas']}>
+          <ScreenWithShortcuts onJ={vi.fn()} onDigitTwo={() => true} />
+          <LocationProbe />
+        </ShortcutsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.keyDown(document.body, { key: '2' })
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.getByTestId('path').textContent).toBe('/practicantes')
   })
 })
