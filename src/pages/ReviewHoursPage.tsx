@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '@/api/client'
 import { HoursProgressPanel } from '@/components/HoursProgressPanel'
 import { PageHeader } from '@/components/PageHeader'
@@ -25,6 +25,7 @@ import { db, type LocalHourLog } from '@/offline/db'
 import { syncNow } from '@/offline/sync/scheduler'
 import { usePlacementById } from '@/offline/hooks/usePlacementById'
 import { HourLedger } from '@/components/ledger/HourLedgerParts'
+import { EvaluateDialog } from './EvaluateDialog'
 import { activateInCurrentItem, moveItemFocus } from '@/shortcuts/listFocus'
 import { ShortcutHint } from '@/shortcuts/ShortcutHint'
 import { useScreenShortcuts } from '@/shortcuts/ShortcutsProvider'
@@ -236,9 +237,28 @@ export function ReviewHoursPage() {
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [rejectingLog, setRejectingLog] = useState<LocalHourLog | null>(null)
 
+  // La evaluación vive en un modal. ?evaluar=1 lo abre al llegar (enlace directo o redirección).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [evaluateOpen, setEvaluateOpen] = useState(() => searchParams.get('evaluar') === '1')
+
+  function changeEvaluateOpen(open: boolean) {
+    setEvaluateOpen(open)
+    if (!open && searchParams.has('evaluar')) setSearchParams({}, { replace: true })
+  }
+
   // Atajos del tutor en la revisión: j/k recorren los registros, a aprueba el enfocado y
   // r lo devuelve (abre el motivo). Sin registro enfocado, a y r no hacen nada.
+  // e abre la evaluación del practicante sin tocar el ratón.
   useScreenShortcuts([
+    {
+      id: 'review-evaluate',
+      label: 'Evaluar practicante',
+      key: 'e',
+      run: () => {
+        setEvaluateOpen(true)
+        return true
+      },
+    },
     { id: 'review-next', label: 'Siguiente registro', key: 'j', run: () => moveItemFocus(1) },
     { id: 'review-prev', label: 'Registro anterior', key: 'k', run: () => moveItemFocus(-1) },
     {
@@ -297,8 +317,8 @@ export function ReviewHoursPage() {
             <Button asChild variant="outline">
               <Link to="/practicantes">Volver a la lista</Link>
             </Button>
-            <Button asChild>
-              <Link to={`/practicantes/${placementId}/evaluar`}>Evaluar practicante</Link>
+            <Button type="button" onClick={() => setEvaluateOpen(true)}>
+              Evaluar practicante
             </Button>
           </>
         }
@@ -320,6 +340,7 @@ export function ReviewHoursPage() {
                 { keys: 'j / k', label: 'registro' },
                 { keys: 'a', label: 'aprobar' },
                 { keys: 'r', label: 'devolver' },
+                { keys: 'e', label: 'evaluar' },
               ]}
             />
             <span className="ml-auto font-data text-12 text-inkSoft">
@@ -341,6 +362,8 @@ export function ReviewHoursPage() {
         onCancel={() => setRejectingLog(null)}
         onConfirm={confirmReject}
       />
+
+      <EvaluateDialog placement={placement} open={evaluateOpen} onOpenChange={changeEvaluateOpen} />
     </>
   )
 }

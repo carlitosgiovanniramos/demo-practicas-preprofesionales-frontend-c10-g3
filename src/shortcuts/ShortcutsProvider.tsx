@@ -35,6 +35,8 @@ export interface ScreenShortcut {
   label: string
   /** Un solo carácter, en minúsculas: "j", "a", "2". */
   key: string
+  /** Si es true, también actúa con una ventana abierta (p. ej. el modal de evaluación). */
+  inDialog?: boolean
   run: () => boolean | void
 }
 
@@ -149,20 +151,26 @@ export function ShortcutsProvider({ navPaths, role, children }: ShortcutsProvide
     function onKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey || event.altKey) return
       if (isTypingTarget(event.target)) return
-      // Con una ventana abierta, las teclas son de esa ventana (Esc la cierra), no de la app.
-      if (document.querySelector('[role="dialog"]')) return
       const key = normalizeEventKey(event)
       if (!key) return
+
+      // Con una ventana abierta, las teclas son de esa ventana (Esc la cierra), salvo los
+      // atajos de pantalla que la declaran explícitamente (inDialog).
+      const dialogOpen = document.querySelector('[role="dialog"]') !== null
 
       // 1) La pantalla activa tiene prioridad, pero solo si de verdad actúa con la tecla.
       const screenShortcut = registry
         .all()
-        .find((shortcut) => shortcut.key === key && shortcut.run() !== false)
+        .find(
+          (shortcut) =>
+            shortcut.key === key && (!dialogOpen || shortcut.inDialog === true) && shortcut.run() !== false,
+        )
       if (screenShortcut) {
         event.preventDefault()
         buffer.current = { steps: [], at: 0 }
         return
       }
+      if (dialogOpen) return
 
       // 2) Atajos globales, con secuencias de hasta dos pasos.
       const now = Date.now()

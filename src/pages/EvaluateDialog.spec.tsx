@@ -1,14 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePlacementById } from '@/offline/hooks/usePlacementById'
+import type { LocalPlacement } from '@/offline/db'
 import { ShortcutsProvider } from '@/shortcuts/ShortcutsProvider'
-import { EvaluatePage } from './EvaluatePage'
+import { EvaluateDialog } from './EvaluateDialog'
 
-vi.mock('@/offline/hooks/usePlacementById', () => ({ usePlacementById: vi.fn() }))
 vi.mock('@/api/evaluations', () => ({ submitEvaluation: vi.fn() }))
 
-const placement = {
+const placement: LocalPlacement = {
   id: 1,
   studentId: 5,
   tutorId: 2,
@@ -19,15 +18,13 @@ const placement = {
   status: 'ACTIVE',
   version: 1,
   updatedAt: '',
-}
+} as LocalPlacement
 
-function renderPage() {
+function renderDialog(open = true) {
   return render(
-    <MemoryRouter initialEntries={['/practicantes/1/evaluar']}>
+    <MemoryRouter>
       <ShortcutsProvider navPaths={['/practicantes', '/horas']}>
-        <Routes>
-          <Route path="/practicantes/:id/evaluar" element={<EvaluatePage />} />
-        </Routes>
+        <EvaluateDialog placement={placement} open={open} onOpenChange={vi.fn()} />
       </ShortcutsProvider>
     </MemoryRouter>,
   )
@@ -38,12 +35,12 @@ const scoreIn = (name: string, value: number) =>
   criterion(name).querySelector<HTMLElement>(`[role="radio"][data-value="${value}"]`) as HTMLElement
 
 beforeEach(() => {
-  vi.mocked(usePlacementById).mockReturnValue(placement)
+  vi.clearAllMocks()
 })
 
-describe('EvaluatePage scoring', () => {
+describe('EvaluateDialog scoring', () => {
   it('sets a score by clicking the number of the criterion', () => {
-    renderPage()
+    renderDialog()
 
     fireEvent.click(scoreIn('Desempeño técnico', 4))
 
@@ -51,8 +48,8 @@ describe('EvaluatePage scoring', () => {
     expect(scoreIn('Desempeño técnico', 3).getAttribute('aria-checked')).toBe('false')
   })
 
-  it('a digit sets the score of the criterion that has the focus, without leaving the page', () => {
-    renderPage()
+  it('a digit sets the score of the criterion that has the focus, inside the dialog', () => {
+    renderDialog()
     scoreIn('Comunicación', 3).focus()
 
     fireEvent.keyDown(scoreIn('Comunicación', 3), { key: '5' })
@@ -61,12 +58,18 @@ describe('EvaluatePage scoring', () => {
   })
 
   it('marks the criteria without a score as invalid and moves the focus to the first one', async () => {
-    renderPage()
+    renderDialog()
 
     fireEvent.click(screen.getByRole('button', { name: 'Enviar evaluación' }))
 
     expect(await screen.findAllByText('Selecciona un puntaje')).toHaveLength(3)
     await waitFor(() => expect(document.activeElement).toBe(criterion('Desempeño técnico')))
     expect(criterion('Desempeño técnico').getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('renders nothing while closed', () => {
+    renderDialog(false)
+
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

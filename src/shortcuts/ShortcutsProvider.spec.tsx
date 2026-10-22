@@ -171,6 +171,32 @@ describe('screen-scoped shortcuts', () => {
     await waitFor(() => expect(screen.getByTestId('path').textContent).toBe('/horas'))
   })
 
+  it('a screen action runs inside an open dialog only when it declares inDialog', async () => {
+    const onJ = vi.fn()
+    const onInDialog = vi.fn(() => true)
+    function Screen() {
+      useScreenShortcuts([
+        { id: 'screen-j', label: 'Siguiente registro', key: 'j', run: () => (onJ(), true) },
+        { id: 'screen-dialog-two', label: 'En el modal', key: '3', inDialog: true, run: onInDialog },
+      ])
+      return null
+    }
+    render(
+      <MemoryRouter initialEntries={['/practicantes']}>
+        <ShortcutsProvider navPaths={['/practicantes']}>
+          <Screen />
+          <div role="dialog" aria-label="Modal de prueba" />
+        </ShortcutsProvider>
+      </MemoryRouter>,
+    )
+
+    fireEvent.keyDown(document.body, { key: 'j' })
+    fireEvent.keyDown(document.body, { key: '3' })
+
+    expect(onJ).not.toHaveBeenCalled()
+    expect(onInDialog).toHaveBeenCalledOnce()
+  })
+
   it('a handled screen action keeps the global shortcut from firing', async () => {
     render(
       <MemoryRouter initialEntries={['/practicantes']}>

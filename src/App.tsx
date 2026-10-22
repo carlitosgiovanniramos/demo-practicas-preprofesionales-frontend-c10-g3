@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider, type Role, useAuth } from '@/auth/AuthContext'
 import { RequireRole } from '@/auth/RequireRole'
 import { AppLayout } from '@/components/AppLayout'
@@ -12,7 +12,6 @@ import { MyApplicationsPage } from '@/pages/MyApplicationsPage'
 import { DocumentsPage } from '@/pages/DocumentsPage'
 import { MyStudentsPage } from '@/pages/MyStudentsPage'
 import { ReviewHoursPage } from '@/pages/ReviewHoursPage'
-import { EvaluatePage } from '@/pages/EvaluatePage'
 import { CompanyOffersPage } from '@/pages/CompanyOffersPage'
 import { OfferApplicationsPage } from '@/pages/OfferApplicationsPage'
 import { AccreditationPage } from '@/pages/AccreditationPage'
@@ -41,11 +40,17 @@ const ROUTES: RouteDef[] = [
   { path: '/documentos', roles: ['STUDENT'], element: <DocumentsPage /> },
   { path: '/practicantes', roles: ['TUTOR'], element: <MyStudentsPage /> },
   { path: '/practicantes/:id/horas', roles: ['TUTOR'], element: <ReviewHoursPage /> },
-  { path: '/practicantes/:id/evaluar', roles: ['TUTOR'], element: <EvaluatePage /> },
+  { path: '/practicantes/:id/evaluar', roles: ['TUTOR'], element: <EvaluateRedirect /> },
   { path: '/ofertas-empresa', roles: ['COMPANY'], element: <CompanyOffersPage /> },
   { path: '/ofertas-empresa/:id/postulaciones', roles: ['COMPANY'], element: <OfferApplicationsPage /> },
   { path: '/acreditacion', roles: ['COORDINATOR'], element: <AccreditationPage /> },
 ]
+
+/** Enlaces antiguos a /evaluar: la evaluación ahora es un modal en la revisión de horas. */
+function EvaluateRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/practicantes/${id}/horas?evaluar=1`} replace />
+}
 
 function HomeRedirect() {
   const { role } = useAuth()

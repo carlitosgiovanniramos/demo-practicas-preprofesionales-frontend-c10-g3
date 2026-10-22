@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDate } from '@/lib/date'
-import { plural } from '@/lib/utils'
+import { cn, plural } from '@/lib/utils'
 import { db, type LocalDocument } from '@/offline/db'
 import { usePlacement } from '@/offline/hooks/usePlacement'
 import { usePlacementDocuments } from '@/offline/hooks/usePlacementDocuments'
@@ -182,7 +182,7 @@ export function DocumentsPage() {
 
       <Section title="Subir documento">
         <form className="flex flex-col gap-4 px-[18px] py-4" onSubmit={handleUpload} noValidate>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="document-kind">Tipo de documento</Label>
               <Select value={kind} onValueChange={(value) => setKind(value as DocumentKind)}>
@@ -201,13 +201,29 @@ export function DocumentsPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="document-file">Archivo</Label>
-              <input
-                id="document-file"
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileChange}
-                className="flex h-field w-full items-center rounded border border-line bg-surface px-[13px] text-13 text-inkBody file:mr-3 file:h-7 file:rounded-md file:border file:border-line file:bg-soft file:px-3 file:font-display file:text-13 file:font-medium file:text-ink"
-              />
+              <div className="flex h-control items-center gap-3 rounded border border-line bg-surface px-1.5">
+                <input
+                  id="document-file"
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileChange}
+                  className="peer sr-only"
+                />
+                <label
+                  htmlFor="document-file"
+                  className="inline-flex h-8 shrink-0 cursor-pointer items-center rounded-md border border-line bg-soft px-3 font-display text-13 font-medium text-ink transition-colors hover:border-stamp peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
+                >
+                  Elegir archivo
+                </label>
+                <span
+                  className={cn(
+                    'min-w-0 truncate text-13',
+                    file ? 'text-inkBody' : 'text-inkSoft',
+                  )}
+                >
+                  {file ? file.name : 'Ningún archivo seleccionado'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -217,7 +233,7 @@ export function DocumentsPage() {
             </p>
           ) : null}
 
-          <Button type="submit" disabled={uploading} className="self-start">
+          <Button type="submit" disabled={uploading} className="w-full sm:w-auto sm:self-end">
             {uploading ? 'Subiendo…' : 'Subir documento'}
           </Button>
         </form>

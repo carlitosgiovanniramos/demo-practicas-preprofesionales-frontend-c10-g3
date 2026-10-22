@@ -1,18 +1,25 @@
 import { type FormEvent, type KeyboardEvent, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { submitEvaluation } from '@/api/evaluations'
 import { FormAlert } from '@/components/FormAlert'
-import { PageHeader } from '@/components/PageHeader'
-import { EmptyState, LoadingState, Panel, Section } from '@/components/Panel'
+import { EmptyState } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { parseLocalDate } from '@/lib/date'
 import { focusFirstInvalid } from '@/lib/form-focus'
 import { cn } from '@/lib/utils'
-import { usePlacementById } from '@/offline/hooks/usePlacementById'
+import type { LocalPlacement } from '@/offline/db'
 import { ShortcutHint } from '@/shortcuts/ShortcutHint'
 import { useScreenShortcuts } from '@/shortcuts/ShortcutsProvider'
 
@@ -113,13 +120,18 @@ function ScoreGroup({ field, label, value, error, onChange }: ScoreGroupProps) {
   )
 }
 
-/** Evaluación del tutor sobre un placement: rúbrica fija + comentario. No sincronizable: siempre requiere red. */
-export function EvaluatePage() {
-  const { id } = useParams<{ id: string }>()
-  const placementId = Number(id)
+interface EvaluateFormProps {
+  placement: LocalPlacement
+  period: string
+  onDone: () => void
+}
 
-  const placement = usePlacementById(placementId)
-
+/**
+ * Formulario de la rúbrica. Vive dentro del contenido del modal: al cerrarse se desmonta
+ * y su estado (puntajes, comentario) se reinicia, y sus atajos 1–5 solo existen mientras
+ * el modal está abierto.
+ */
+function EvaluateForm({ placement, period, onDone }: EvaluateFormProps) {
   const [scores, setScores] = useState<Record<ScoreField, string>>({
     technical: '',
     communication: '',
@@ -131,13 +143,14 @@ export function EvaluatePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
-  // Con el foco en un criterio, 1–5 pone ese puntaje. Sin foco en un criterio la tecla
-  // sigue siendo la del menú (1 = primera sección), porque run devuelve false.
+  // Con el foco en un criterio, 1–5 pone ese puntaje. Sin foco en un criterio devuelve
+  // false y la tecla sigue su camino (dentro del modal, la app no reacciona a ella).
   useScreenShortcuts(
     SCORES.map((score) => ({
       id: `score-${score}`,
       label: `Poner ${score} en el criterio enfocado`,
       key: String(score),
+      inDialog: true,
       run: () => {
         const field = document.activeElement?.closest<HTMLElement>('[data-criterion]')?.dataset.criterion as
           | ScoreField
@@ -149,16 +162,6 @@ export function EvaluatePage() {
       },
     })),
   )
-
-  if (placement === undefined) {
-    return <LoadingState>Cargando practicante…</LoadingState>
-  }
-
-  if (placement === null) {
-    return <EmptyState illustration="people" title="No se encontró este practicante" />
-  }
-
-  const period = periodFromStartDate(placement.startDate)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -180,7 +183,7 @@ export function EvaluatePage() {
     setSubmitting(true)
     try {
       await submitEvaluation({
-        placementId,
+        placementId: placement.id,
         kind: 'TUTOR',
         period,
         scores: {
@@ -198,70 +201,88 @@ export function EvaluatePage() {
     }
   }
 
+  if (submitted) {
+    return (
+      <DialogBody>
+        <EmptyState
+          illustration="check"
+          title="Evaluación enviada"
+          description="La coordinación ya la puede ver en el acta del periodo."
+          action={<Button onClick={onDone}>Listo</Button>}
+        />
+      </DialogBody>
+    )
+  }
+
   return (
-    <>
-      <PageHeader
-        title="Evaluar practicante"
-        subtitle={`Estudiante #${placement.studentId} · Empresa #${placement.companyId} · periodo ${period}`}
-        actions={
-          <Button asChild variant="outline">
-            <Link to={`/practicantes/${placementId}/horas`}>Ver libro de horas</Link>
-          </Button>
-        }
-      />
+    <form onSubmit={handleSubmit} noValidate>
+      <DialogBody>
+        <ShortcutHint items={[{ keys: '1–5', label: 'puntaje del criterio con foco' }]} />
 
-      {submitted ? (
-        <Panel>
-          <EmptyState
-            illustration="check"
-            title="Evaluación enviada"
-            description="La coordinación ya la puede ver en el acta del periodo."
-            action={
-              <Button asChild size="sm">
-                <Link to="/practicantes">Volver a mis practicantes</Link>
-              </Button>
-            }
+        <div className="grid gap-4 sm:grid-cols-3">
+          {CRITERIA.map(({ field, label }) => (
+            <ScoreGroup
+              key={field}
+              field={field}
+              label={label}
+              value={scores[field]}
+              error={errors[field]}
+              onChange={(value) => {
+                setScores((prev) => ({ ...prev, [field]: value }))
+                setErrors((prev) => ({ ...prev, [field]: undefined }))
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="eval-comment">Comentario</Label>
+          <p className="text-12 text-inkSoft">Opcional. Queda en el acta junto con los puntajes.</p>
+          <Textarea
+            id="eval-comment"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            rows={3}
+            placeholder="Observaciones sobre el desempeño del practicante"
           />
-        </Panel>
-      ) : (
-        <Section title="Rúbrica" aside={<ShortcutHint items={[{ keys: '1–5', label: 'puntaje del criterio con foco' }]} />}>
-          <form className="flex flex-col gap-4 px-[18px] py-4" onSubmit={handleSubmit} noValidate>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {CRITERIA.map(({ field, label }) => (
-                <ScoreGroup
-                  key={field}
-                  field={field}
-                  label={label}
-                  value={scores[field]}
-                  error={errors[field]}
-                  onChange={(value) => {
-                    setScores((prev) => ({ ...prev, [field]: value }))
-                    setErrors((prev) => ({ ...prev, [field]: undefined }))
-                  }}
-                />
-              ))}
-            </div>
+        </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="eval-comment">Comentario</Label>
-              <p className="text-12 text-inkSoft">Opcional. Queda en el acta junto con los puntajes.</p>
-              <Textarea
-                id="eval-comment"
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                rows={4}
-                placeholder="Observaciones sobre el desempeño del practicante"
-              />
-            </div>
+        <FormAlert message={submitError} />
+      </DialogBody>
 
-            <FormAlert message={submitError} />
+      <DialogFooter>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Enviando…' : 'Enviar evaluación'}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
 
-            <Button type="submit" disabled={submitting} className="self-start">
-              {submitting ? 'Enviando…' : 'Enviar evaluación'}
-            </Button>
-          </form>
-        </Section>
-      )}
-    </>
+interface EvaluateDialogProps {
+  placement: LocalPlacement
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+/**
+ * Evaluación del tutor sobre un placement, en un modal (animación de entrada y salida
+ * del propio DialogContent). Rúbrica fija + comentario. No sincronizable: requiere red.
+ */
+export function EvaluateDialog({ placement, open, onOpenChange }: EvaluateDialogProps) {
+  const period = periodFromStartDate(placement.startDate)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Evaluar practicante</DialogTitle>
+          <DialogDescription>
+            {`Estudiante #${placement.studentId} · Empresa #${placement.companyId} · periodo ${period}`}
+          </DialogDescription>
+        </DialogHeader>
+        <EvaluateForm placement={placement} period={period} onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
   )
 }
