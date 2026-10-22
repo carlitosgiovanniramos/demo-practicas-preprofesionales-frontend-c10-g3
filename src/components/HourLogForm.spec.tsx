@@ -35,4 +35,31 @@ describe('HourLogForm · límite de horas por registro (D-06)', () => {
 
     expect(document.getElementById('hourlog-hours-error')?.textContent).toBe(HOUR_LOG_HOURS_MESSAGE)
   })
+
+  it('al enviar con errores, lleva el foco al primer campo inválido', () => {
+    render(<HourLogForm placementId={1} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar horas' }))
+
+    expect(document.activeElement?.id).toBe('hourlog-start')
+  })
+
+  it('Ctrl+Enter en la actividad envía el formulario', () => {
+    render(<HourLogForm placementId={1} />)
+    const activity = screen.getByLabelText('Actividad')
+
+    fireEvent.keyDown(activity, { key: 'Enter', ctrlKey: true })
+
+    expect(document.getElementById('hourlog-activity-error')?.textContent).toBe('Describe la actividad realizada')
+  })
+
+  it('ofrece usar la duración calculada cuando el campo Horas está vacío', () => {
+    render(<HourLogForm placementId={1} />)
+    fireEvent.change(screen.getByLabelText('Hora de inicio'), { target: { value: '08:00' } })
+    fireEvent.change(screen.getByLabelText('Hora de fin'), { target: { value: '12:30' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usar 4.5 h' }))
+
+    expect((screen.getByLabelText('Horas') as HTMLInputElement).value).toBe('4.5')
+  })
 })

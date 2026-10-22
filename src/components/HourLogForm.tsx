@@ -1,8 +1,10 @@
 import { type FormEvent, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { focusFirstInvalid } from '@/lib/form-focus'
 import { hourLogFieldsError } from '@/lib/hour-log-rules'
 import { db, type LocalHourLog } from '@/offline/db'
 import { enqueue } from '@/offline/sync/push'
@@ -47,23 +49,19 @@ function formatDateForConfirmation(dateValue: string): string {
   }).format(parsed)
 }
 
-// Duración calculada a partir de la hora de inicio y de fin, para que el
-// estudiante pueda comparar contra lo que va a escribir en "Horas" antes de
-// guardar. Puramente informativo: no toca las horas que finalmente se
-// registran, esas siempre vienen del campo "Horas".
-function computeDurationLabel(startTime: string, endTime: string): string | null {
+// Duración en horas a partir de la hora de inicio y de fin, redondeada al medio
+// punto que acepta el campo "Horas". Solo sirve de sugerencia: nunca escribe el
+// campo por su cuenta; el estudiante decide si la usa.
+function computeDurationHours(startTime: string, endTime: string): number | null {
   if (!startTime || !endTime) return null
   const [startHour, startMinute] = startTime.split(':').map(Number)
   const [endHour, endMinute] = endTime.split(':').map(Number)
   if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) {
     return null
   }
-  const startMinutes = startHour * 60 + startMinute
-  const endMinutes = endHour * 60 + endMinute
-  const diffMinutes = endMinutes - startMinutes
+  const diffMinutes = endHour * 60 + endMinute - (startHour * 60 + startMinute)
   if (diffMinutes <= 0) return null
-  const diffHours = diffMinutes / 60
-  return `Duración calculada: ${diffHours.toFixed(1)} h`
+  return Math.round((diffMinutes / 60) * 2) / 2
 }
 
 /** Mensaje de error bajo un campo del formulario; no renderiza nada si no hay error. */
@@ -120,8 +118,9 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const confirmationLabel = formatDateForConfirmation(date)
-  const durationLabel = computeDurationLabel(startTime, endTime)
+  const durationHours = computeDurationHours(startTime, endTime)
   const liveHoursWarning = hours ? hourLogFieldsError(hours, startTime, endTime) : null
+  const suggestHours = durationHours !== null && hours === ''
 
   function resetForm() {
     setDate(todayAsInputValue())
@@ -134,13 +133,17 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const form = event.currentTarget
     setSubmitError(null)
 
     const nextErrors = buildFormErrors({ date, startTime, endTime, hours, activity })
-    setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
+      // flushSync: el error debe estar en el DOM antes de mover el foco al primer campo inválido.
+      flushSync(() => setErrors(nextErrors))
+      focusFirstInvalid(form)
       return
     }
+    setErrors({})
 
     setSubmitting(true)
 
@@ -256,8 +259,15 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
         </div>
       </div>
 
-      {durationLabel ? (
-        <p className="-mt-2 font-data text-12 text-inkSoft">{durationLabel}</p>
+      {durationHours !== null ? (
+        <div className="-mt-2 flex flex-wrap items-center gap-2 font-data text-12 text-inkSoft">
+          <span>Duración calculada: {durationHours.toFixed(1)} h</span>
+          {suggestHours ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setHours(String(durationHours))}>
+              Usar {durationHours} h
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-1.5">
@@ -285,6 +295,13 @@ export function HourLogForm({ placementId, onSaved }: HourLogFormProps) {
           id="hourlog-activity"
           value={activity}
           onChange={(event) => setActivity(event.target.value)}
+          onKeyDown={(event) => {
+            // Ctrl/⌘ + Enter envía el formulario desde la actividad, sin salir del teclado.
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+              event.preventDefault()
+              event.currentTarget.form?.requestSubmit()
+            }
+          }}
           aria-invalid={Boolean(errors.activity)}
           aria-describedby={errors.activity ? 'hourlog-activity-error' : undefined}
           rows={3}

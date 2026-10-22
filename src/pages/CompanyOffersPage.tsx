@@ -1,4 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { focusFirstInvalid } from '@/lib/form-focus'
 import { Link } from 'react-router-dom'
 import {
   type Company,
@@ -433,8 +435,13 @@ export function CompanyOffersPage() {
     }
 
     const nextErrors = validateForm(form)
-    setFormErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      // flushSync: el error debe estar en el DOM antes de llevar el foco al primer campo inválido.
+      flushSync(() => setFormErrors(nextErrors))
+      focusFirstInvalid(event.currentTarget)
+      return
+    }
+    setFormErrors({})
 
     const dto: CreateOfferDto = {
       companyId: user.companyId,
@@ -467,7 +474,7 @@ export function CompanyOffersPage() {
         title="Mis ofertas"
         subtitle={myCompany ? `${myCompany.name} · ${intro}` : intro}
         actions={
-          <Button type="button" onClick={openDialog}>
+          <Button type="button" data-shortcut-new="" onClick={openDialog}>
             Publicar oferta
           </Button>
         }
@@ -511,11 +518,13 @@ export function CompanyOffersPage() {
         empty={
           offers && offers.length > 0 ? (
             <EmptyState
+              illustration="search"
               title="Ninguna oferta coincide con el filtro"
               description="Probá con otra búsqueda o cambiá el estado."
             />
           ) : (
             <EmptyState
+              illustration="briefcase"
               title="Todavía no has publicado ofertas"
               description="Publicá una vacante para que los estudiantes puedan postular."
               action={
