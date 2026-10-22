@@ -25,6 +25,9 @@ import { db, type LocalHourLog } from '@/offline/db'
 import { syncNow } from '@/offline/sync/scheduler'
 import { usePlacementById } from '@/offline/hooks/usePlacementById'
 import { HourLedger } from '@/components/ledger/HourLedgerParts'
+import { activateInCurrentItem, moveItemFocus } from '@/shortcuts/listFocus'
+import { ShortcutHint } from '@/shortcuts/ShortcutHint'
+import { useScreenShortcuts } from '@/shortcuts/ShortcutsProvider'
 
 type ActionState = 'approving' | 'rejecting' | 'approved' | 'rejected' | null
 
@@ -55,10 +58,10 @@ function ReviewActions({ log, state, onApprove, onReject }: ReviewActionsProps) 
   const busy = state === 'approving' || state === 'rejecting'
   return (
     <>
-      <Button type="button" size="sm" onClick={() => onApprove(log.id)} disabled={busy}>
+      <Button type="button" size="sm" data-action="approve" onClick={() => onApprove(log.id)} disabled={busy}>
         {state === 'approving' ? 'Aprobando…' : 'Aprobar'}
       </Button>
-      <Button type="button" size="sm" variant="outline" onClick={() => onReject(log)} disabled={busy}>
+      <Button type="button" size="sm" variant="outline" data-action="reject" onClick={() => onReject(log)} disabled={busy}>
         Devolver
       </Button>
     </>
@@ -84,7 +87,7 @@ function ReviewList({ logs, actionState, onApprove, onReject }: ReviewListProps)
   }
 
   return (
-    <HourLedger logs={logs} actionsLabel="Revisión" renderRest={(log) => (
+    <HourLedger logs={logs} actionsLabel="Revisión" navigable renderRest={(log) => (
       <>
             <span className="flex-1 text-14 text-inkBody">{log.activity}</span>
             <span className="sm:w-32">
@@ -233,6 +236,25 @@ export function ReviewHoursPage() {
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [rejectingLog, setRejectingLog] = useState<LocalHourLog | null>(null)
 
+  // Atajos del tutor en la revisión: j/k recorren los registros, a aprueba el enfocado y
+  // r lo devuelve (abre el motivo). Sin registro enfocado, a y r no hacen nada.
+  useScreenShortcuts([
+    { id: 'review-next', label: 'Siguiente registro', key: 'j', run: () => moveItemFocus(1) },
+    { id: 'review-prev', label: 'Registro anterior', key: 'k', run: () => moveItemFocus(-1) },
+    {
+      id: 'review-approve',
+      label: 'Aprobar el registro enfocado',
+      key: 'a',
+      run: () => activateInCurrentItem('[data-action="approve"]'),
+    },
+    {
+      id: 'review-reject',
+      label: 'Devolver el registro enfocado',
+      key: 'r',
+      run: () => activateInCurrentItem('[data-action="reject"]'),
+    },
+  ])
+
   async function reviewLog(logId: number, status: 'APPROVED' | 'REJECTED', note?: string) {
     setReviewError(null)
     setActionState((prev) => ({ ...prev, [logId]: status === 'APPROVED' ? 'approving' : 'rejecting' }))
@@ -292,9 +314,18 @@ export function ReviewHoursPage() {
 
       <Panel
         toolbar={
-          <span className="ml-auto font-data text-12 text-inkSoft">
-            {plural(pendingCount, 'registro', 'registros')} sin revisar
-          </span>
+          <>
+            <ShortcutHint
+              items={[
+                { keys: 'j / k', label: 'registro' },
+                { keys: 'a', label: 'aprobar' },
+                { keys: 'r', label: 'devolver' },
+              ]}
+            />
+            <span className="ml-auto font-data text-12 text-inkSoft">
+              {plural(pendingCount, 'registro', 'registros')} sin revisar
+            </span>
+          </>
         }
       >
         <ReviewList

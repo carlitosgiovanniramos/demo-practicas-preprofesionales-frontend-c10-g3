@@ -14,6 +14,9 @@ import { Ledger } from '@/components/ledger/Ledger'
 import { db, type LocalHourLog, type LocalPlacement } from '@/offline/db'
 import { usePagedItems } from '@/lib/use-paged-items'
 import { plural } from '@/lib/utils'
+import { moveItemFocus } from '@/shortcuts/listFocus'
+import { ShortcutHint } from '@/shortcuts/ShortcutHint'
+import { useScreenShortcuts } from '@/shortcuts/ShortcutsProvider'
 
 interface StudentRow {
   placement: LocalPlacement
@@ -66,7 +69,7 @@ function StudentQueueRow({ placement, approvedHours, submittedHours }: StudentRo
   const requiredHours = placement.requiredHours
   const approvedPct = requiredHours > 0 ? Math.min(100, (approvedHours / requiredHours) * 100) : 0
   return (
-    <div className={rowClass}>
+    <div className={rowClass} data-shortcut-item="">
       <span className="text-14 font-semibold text-ink sm:w-32">Estudiante #{placement.studentId}</span>
       <span className="flex-1 text-14 text-inkBody">Empresa #{placement.companyId}</span>
       <span className="flex items-center gap-2.5 sm:w-44">
@@ -148,6 +151,12 @@ function StudentsView({ rows }: { rows: StudentRow[] }) {
   const paged = usePagedItems(filtered, PAGE_SIZE, queue)
   const noneInQueue = paged !== undefined && paged.pageItems.length === 0
 
+  // j/k recorren a los practicantes de la cola; Enter abre el enfocado (el enlace "Revisar").
+  useScreenShortcuts([
+    { id: 'students-next', label: 'Siguiente practicante', key: 'j', run: () => moveItemFocus(1) },
+    { id: 'students-prev', label: 'Practicante anterior', key: 'k', run: () => moveItemFocus(-1) },
+  ])
+
   return (
     <>
       <PageHeader
@@ -167,6 +176,7 @@ function StudentsView({ rows }: { rows: StudentRow[] }) {
                 onChange={(value) => setQueue(value as QueueFilter)}
                 options={QUEUE_FILTERS}
               />
+              <ShortcutHint items={[{ keys: 'j / k', label: 'practicante' }, { keys: 'Enter', label: 'revisar' }]} />
               <span className="ml-auto font-data text-12 text-inkSoft" aria-live="polite">
                 {plural(filtered?.length ?? 0, 'practicante', 'practicantes')}
               </span>

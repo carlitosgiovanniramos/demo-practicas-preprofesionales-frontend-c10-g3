@@ -1,16 +1,20 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type KeyboardEvent, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { submitEvaluation } from '@/api/evaluations'
+import { FormAlert } from '@/components/FormAlert'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState, LoadingState, Panel, Section } from '@/components/Panel'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { parseLocalDate } from '@/lib/date'
+import { focusFirstInvalid } from '@/lib/form-focus'
+import { cn } from '@/lib/utils'
 import { usePlacementById } from '@/offline/hooks/usePlacementById'
-import { FormAlert } from '@/components/FormAlert'
+import { ShortcutHint } from '@/shortcuts/ShortcutHint'
+import { useScreenShortcuts } from '@/shortcuts/ShortcutsProvider'
 
 type ScoreField = 'technical' | 'communication' | 'punctuality'
 
@@ -23,7 +27,7 @@ const CRITERIA: { field: ScoreField; label: string }[] = [
   { field: 'punctuality', label: 'Puntualidad' },
 ]
 
-const SCORE_OPTIONS = ['1', '2', '3', '4', '5']
+const SCORES = [1, 2, 3, 4, 5]
 
 // Periodo académico AAAA-1 (enero-junio) o AAAA-2 (julio-diciembre), tal
 // como lo espera el backend (ver AccreditationService.reportForPeriod). Se
@@ -34,6 +38,79 @@ function periodFromStartDate(startDate: string): string {
   const year = parsed.getFullYear()
   const term = parsed.getMonth() < 6 ? 1 : 2
   return `${year}-${term}`
+}
+
+interface ScoreGroupProps {
+  field: ScoreField
+  label: string
+  value: string
+  error?: string
+  onChange: (value: string) => void
+}
+
+/**
+ * Puntaje de un criterio como botones 1–5 (patrón de radio): se marca con clic o con las
+ * flechas, y el foco de la rejilla es el que usan los atajos numéricos.
+ */
+function ScoreGroup({ field, label, value, error, onChange }: ScoreGroupProps) {
+  const labelId = `eval-${field}-label`
+  const current = value ? Number(value) : 0
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) return
+    event.preventDefault()
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1
+    // Sin puntaje, la flecha arriba/derecha empieza en 1 y la de abajo/izquierda en 5.
+    const base = current || (step > 0 ? 0 : SCORES.length + 1)
+    const next = Math.min(SCORES.length, Math.max(1, base + step))
+    onChange(String(next))
+    event.currentTarget.querySelector<HTMLButtonElement>(`[data-value="${next}"]`)?.focus()
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label id={labelId} htmlFor={undefined}>
+        {label}
+      </Label>
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        aria-invalid={Boolean(error)}
+        tabIndex={-1}
+        data-criterion={field}
+        onKeyDown={handleKeyDown}
+        className="grid grid-cols-5 gap-1.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-stamp focus-visible:ring-offset-2"
+      >
+        {SCORES.map((score) => {
+          const checked = current === score
+          return (
+            <button
+              key={score}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              data-value={score}
+              tabIndex={checked || (current === 0 && score === 1) ? 0 : -1}
+              onClick={() => onChange(String(score))}
+              className={cn(
+                'font-data flex h-10 items-center justify-center rounded-md border text-14 font-semibold transition-colors',
+                checked
+                  ? 'border-stamp bg-stamp text-surface'
+                  : 'border-line bg-surface text-inkBody hover:border-stamp hover:text-ink',
+              )}
+            >
+              {score}
+            </button>
+          )
+        })}
+      </div>
+      {error ? (
+        <p role="alert" className="text-12 font-medium text-void">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 /** Evaluación del tutor sobre un placement: rúbrica fija + comentario. No sincronizable: siempre requiere red. */
@@ -54,6 +131,25 @@ export function EvaluatePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
+  // Con el foco en un criterio, 1–5 pone ese puntaje. Sin foco en un criterio la tecla
+  // sigue siendo la del menú (1 = primera sección), porque run devuelve false.
+  useScreenShortcuts(
+    SCORES.map((score) => ({
+      id: `score-${score}`,
+      label: `Poner ${score} en el criterio enfocado`,
+      key: String(score),
+      run: () => {
+        const field = document.activeElement?.closest<HTMLElement>('[data-criterion]')?.dataset.criterion as
+          | ScoreField
+          | undefined
+        if (!field) return false
+        setScores((prev) => ({ ...prev, [field]: String(score) }))
+        setErrors((prev) => ({ ...prev, [field]: undefined }))
+        return true
+      },
+    })),
+  )
+
   if (placement === undefined) {
     return <LoadingState>Cargando practicante…</LoadingState>
   }
@@ -66,14 +162,20 @@ export function EvaluatePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const form = event.currentTarget
     setSubmitError(null)
 
     const nextErrors: Partial<Record<ScoreField, string>> = {}
     for (const { field } of CRITERIA) {
       if (!scores[field]) nextErrors[field] = 'Selecciona un puntaje'
     }
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      // flushSync: el error debe estar en el DOM antes de llevar el foco al primer criterio sin puntaje.
+      flushSync(() => setErrors(nextErrors))
+      focusFirstInvalid(form)
+      return
+    }
+    setErrors({})
 
     setSubmitting(true)
     try {
@@ -122,45 +224,27 @@ export function EvaluatePage() {
           />
         </Panel>
       ) : (
-        <Section title="Rúbrica">
+        <Section title="Rúbrica" aside={<ShortcutHint items={[{ keys: '1–5', label: 'puntaje del criterio con foco' }]} />}>
           <form className="flex flex-col gap-4 px-[18px] py-4" onSubmit={handleSubmit} noValidate>
             <div className="grid gap-4 sm:grid-cols-3">
               {CRITERIA.map(({ field, label }) => (
-                <div key={field} className="flex flex-col gap-1.5">
-                  <Label htmlFor={`eval-${field}`}>{label}</Label>
-                  <Select
-                    value={scores[field]}
-                    onValueChange={(value) => setScores((prev) => ({ ...prev, [field]: value }))}
-                  >
-                    <SelectTrigger
-                      id={`eval-${field}`}
-                      className="font-data"
-                      aria-invalid={Boolean(errors[field])}
-                    >
-                      <SelectValue placeholder="1 a 5" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SCORE_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option} className="font-data">
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors[field] ? (
-                    <p role="alert" className="text-12 text-void">
-                      {errors[field]}
-                    </p>
-                  ) : null}
-                </div>
+                <ScoreGroup
+                  key={field}
+                  field={field}
+                  label={label}
+                  value={scores[field]}
+                  error={errors[field]}
+                  onChange={(value) => {
+                    setScores((prev) => ({ ...prev, [field]: value }))
+                    setErrors((prev) => ({ ...prev, [field]: undefined }))
+                  }}
+                />
               ))}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="eval-comment">Comentario</Label>
-              <p className="text-12 text-inkSoft">
-                Opcional. Queda en el acta junto con los puntajes.
-              </p>
+              <p className="text-12 text-inkSoft">Opcional. Queda en el acta junto con los puntajes.</p>
               <Textarea
                 id="eval-comment"
                 value={comment}
