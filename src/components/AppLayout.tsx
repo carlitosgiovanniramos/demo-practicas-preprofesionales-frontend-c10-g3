@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth, type Role } from '@/auth/AuthContext'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/Logo'
 import { SyncIndicator } from '@/components/SyncIndicator'
 import { startSync } from '@/offline/sync/scheduler'
 import { cn } from '@/lib/utils'
@@ -69,12 +70,7 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-paper md:h-screen md:overflow-hidden">
       <header className="flex h-topbar flex-none items-center gap-4 border-b-2 border-stamp bg-surface px-[18px]">
-        <div className="flex flex-none items-center gap-2.5">
-          <span aria-hidden="true" className="block size-[22px] rounded-md bg-stamp" />
-          <span className="font-display text-17 font-bold tracking-[-0.02em] text-ink">
-            prácticas.
-          </span>
-        </div>
+        <Logo className="flex-none" />
 
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2.5 rounded-full border border-line py-1 pl-1 pr-2.5">

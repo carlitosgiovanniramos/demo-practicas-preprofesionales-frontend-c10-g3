@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiError } from '@/api/client'
 import { useAuth } from '@/auth/AuthContext'
+import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,12 +36,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-4 py-10">
       <div className="w-full max-w-[420px]">
-        <div className="mb-6 flex items-center gap-2.5">
-          <span aria-hidden="true" className="block size-[22px] rounded-md bg-stamp" />
-          <span className="font-display text-17 font-bold tracking-[-0.02em] text-ink">
-            prácticas.
-          </span>
-        </div>
+        <Logo className="mb-6" />
 
         <div className="rounded-2xl bg-surface px-7 py-7">
           <h1 className="font-display text-26 font-bold tracking-[-0.02em] text-ink">
