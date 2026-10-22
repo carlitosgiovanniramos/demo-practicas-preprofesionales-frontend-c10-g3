@@ -90,7 +90,10 @@ export function matchVoice(transcript: string, commands: VoiceCommand[]): VoiceM
 export interface LoginActions {
   submit: () => boolean
   fillByHint: (hint: string, text: string) => boolean
-  togglePassword: () => boolean
+  /** Muestra la contraseña ("visibilizar", "contraseña visible"). */
+  showPassword: () => boolean
+  /** Oculta la contraseña ("ocultar contraseña"). */
+  hidePassword: () => boolean
   /** Llena un campo por su nombre dicho al principio: "contraseña secreta". */
   fill: (spoken: string) => boolean
   nextField: (delta: 1 | -1) => boolean
@@ -149,10 +152,25 @@ export function buildLoginCommands(actions: LoginActions): VoiceCommand[] {
       run: actions.clear,
     },
     {
-      id: 'login-password-visibility',
-      phrases: ['visible', 'mostrar contraseña', 'ocultar contraseña', 'ver contraseña', 'mostrar clave', 'ver clave'],
-      feedback: () => 'Contraseña visible u oculta',
-      run: actions.togglePassword,
+      id: 'login-password-show',
+      phrases: [
+        'visibilizar',
+        'visibilizar contraseña',
+        'contraseña visible',
+        'visible',
+        'mostrar contraseña',
+        'ver contraseña',
+        'mostrar clave',
+        'ver clave',
+      ],
+      feedback: () => 'Contraseña visible',
+      run: actions.showPassword,
+    },
+    {
+      id: 'login-password-hide',
+      phrases: ['ocultar', 'ocultar contraseña', 'ocultar clave', 'contraseña oculta'],
+      feedback: () => 'Contraseña oculta',
+      run: actions.hidePassword,
     },
   ]
 }

@@ -218,6 +218,18 @@ describe('números dictados en correos y contraseñas', () => {
     expect((document.getElementById('p') as HTMLInputElement).value).toBe('23')
   })
 
+  it('en una contraseña las palabras van juntas; solo "espacio" pone un espacio', () => {
+    document.body.innerHTML = '<input id="p" type="password" />'
+    const field = document.getElementById('p') as HTMLInputElement
+    field.focus()
+
+    dictateIntoFocused('hola mundo')
+    expect(field.value).toBe('holamundo')
+
+    dictateIntoFocused('hola espacio mundo')
+    expect(field.value).toBe('hola mundo')
+  })
+
   it('en un correo, los números dictados se escriben como cifras', () => {
     document.body.innerHTML = '<input id="e" type="email" />'
     document.getElementById('e')!.focus()

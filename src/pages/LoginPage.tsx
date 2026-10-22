@@ -9,7 +9,8 @@ import {
   fillFieldByHint,
   nextField,
   submitForm,
-  togglePasswordVisibility,
+  hidePasswordField,
+  showPasswordField,
   voiceFallback,
 } from '@/voice/actions'
 import { VoiceCommandButton } from '@/voice/VoiceCommandButton'
@@ -105,7 +106,8 @@ export function LoginPage() {
           buildLoginCommands({
             submit: submitForm,
             fillByHint: fillFieldByHint,
-            togglePassword: togglePasswordVisibility,
+            showPassword: showPasswordField,
+            hidePassword: hidePasswordField,
             fill: fillField,
             nextField,
             clear: clearField,

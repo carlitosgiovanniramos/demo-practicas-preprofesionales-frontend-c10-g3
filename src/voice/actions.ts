@@ -89,12 +89,15 @@ function numberWordsToDigits(text: string): string {
   return out.join(' ')
 }
 
-/** Une los dígitos dichos por separado: "0 1 2" → "012". */
-const joinDigits = (text: string) => text.replace(/(\d) (?=\d)/g, '$1')
-
-/** Una contraseña conserva sus espacios; solo los números dichos se vuelven cifras. */
+/**
+ * Contraseña: las palabras van juntas, sin espacios, a menos que se diga "espacio". Los números dichos
+ * se vuelven cifras ("cero uno dos" → 012).
+ */
 function spokenPassword(text: string): string {
-  return joinDigits(numberWordsToDigits(text))
+  return numberWordsToDigits(text)
+    .split(' ')
+    .map((token) => (normalizeSpeech(token) === 'espacio' ? ' ' : token))
+    .join('')
 }
 
 function spokenEmail(text: string): string {
@@ -116,9 +119,14 @@ function toFieldValue(field: TextField, spoken: string): string {
   return text
 }
 
-/** Muestra u oculta la contraseña del login, pulsando su botón de ojo. */
-export function togglePasswordVisibility(): boolean {
-  return clickButtonNamed('mostrar contraseña') || clickButtonNamed('ocultar contraseña')
+/** Muestra la contraseña del login pulsando su botón de ojo (solo si está oculta). */
+export function showPasswordField(): boolean {
+  return clickButtonNamed('mostrar contraseña')
+}
+
+/** Oculta la contraseña del login (solo si está visible). */
+export function hidePasswordField(): boolean {
+  return clickButtonNamed('ocultar contraseña')
 }
 
 /** Escribe en el buscador de la pantalla y lo enfoca. */

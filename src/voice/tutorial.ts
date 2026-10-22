@@ -36,7 +36,8 @@ const SECTIONS: { title: string; items: string[] }[] = [
       '<b>Llenar un campo:</b> enfoca el campo y di lo que va en él, por ejemplo "2:35" en la hora de inicio. También puedes decir "llenar comentario muy bien".',
       '<b>Números:</b> en correos y contraseñas, "cero" se escribe 0 y cualquier número también ("uno dos tres" es 123).',
       '<b>Pasar de campo:</b> di "siguiente campo" o "campo anterior".',
-      '<b>Contraseña visible:</b> di "visible" para ver u ocultar la contraseña.',
+      '<b>Contraseña visible:</b> di "visibilizar" o "contraseña visible" para verla, y "ocultar" para esconderla.',
+      '<b>Espacios en la contraseña:</b> las palabras van juntas; di "espacio" cuando quieras un espacio.',
     ],
   },
   {
