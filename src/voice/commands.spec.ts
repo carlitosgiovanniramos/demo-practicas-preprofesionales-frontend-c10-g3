@@ -6,6 +6,7 @@ function makeActions() {
     navigate: vi.fn(),
     openHelp: vi.fn(),
     stepRecommendation: vi.fn(),
+    stepPage: vi.fn(() => true),
     search: vi.fn(() => true),
     create: vi.fn(() => true),
     submit: vi.fn(() => true),
@@ -62,6 +63,40 @@ describe('matchVoice', () => {
 
   it('las frases exactas siguen funcionando', () => {
     expect(matchVoice('ofertas', commands)?.command.id).toBe('ofertas')
+  })
+})
+
+describe('paginación por voz', () => {
+  it('"siguiente página" y "página siguiente" avanzan a la página siguiente', () => {
+    const actions = makeActions()
+    const commands = buildVoiceCommands([], actions)
+
+    for (const heard of ['siguiente página', 'página siguiente']) {
+      const match = matchCommand(heard, commands)
+      expect(match?.id).toBe('page-next')
+      match?.run()
+    }
+
+    expect(actions.stepPage).toHaveBeenCalledTimes(2)
+    expect(actions.stepPage).toHaveBeenNthCalledWith(1, 1)
+  })
+
+  it('"página anterior" y "atrás" retroceden a la página anterior', () => {
+    const actions = makeActions()
+    const commands = buildVoiceCommands([], actions)
+
+    for (const heard of ['página anterior', 'atrás']) {
+      const match = matchCommand(heard, commands)
+      expect(match?.id).toBe('page-prev')
+      match?.run()
+    }
+
+    expect(actions.stepPage).toHaveBeenNthCalledWith(1, -1)
+    expect(actions.stepPage).toHaveBeenNthCalledWith(2, -1)
+  })
+
+  it('"siguiente" sola sigue siendo la recomendación siguiente', () => {
+    expect(matchCommand('siguiente', buildVoiceCommands([], makeActions()))?.id).toBe('recommendation-next')
   })
 })
 

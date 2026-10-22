@@ -30,6 +30,8 @@ export interface VoiceActions {
   navigate: (path: string) => void
   openHelp: () => void
   stepRecommendation: (delta: 1 | -1) => void
+  /** Pasa a la página siguiente (1) o anterior (-1) de la lista de la pantalla. */
+  stepPage: (delta: 1 | -1) => boolean
   search: (text: string) => boolean
   create: () => boolean
   submit: () => boolean
@@ -203,6 +205,18 @@ export function buildVoiceCommands(navTargets: NavTarget[], actions: VoiceAction
       phrases: ['anterior recomendacion', 'recomendacion anterior', 'anterior'],
       feedback: () => 'Recomendación anterior',
       run: () => actions.stepRecommendation(-1),
+    },
+    {
+      id: 'page-next',
+      phrases: ['siguiente pagina', 'pagina siguiente'],
+      feedback: () => 'Página siguiente',
+      run: () => actions.stepPage(1),
+    },
+    {
+      id: 'page-prev',
+      phrases: ['pagina anterior', 'pagina atras', 'atras'],
+      feedback: () => 'Página anterior',
+      run: () => actions.stepPage(-1),
     },
     {
       id: 'create',

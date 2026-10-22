@@ -16,6 +16,7 @@ import {
   fillField,
   nextField,
   searchFor,
+  stepPage,
   submitForm,
   writeText,
 } from '@/voice/actions'
@@ -106,6 +107,7 @@ function AppFrame() {
       openHelp,
       stepRecommendation: (delta) =>
         window.dispatchEvent(new CustomEvent(RECOMMENDATION_STEP_EVENT, { detail: delta })),
+      stepPage,
       search: searchFor,
       create: createNew,
       submit: submitForm,

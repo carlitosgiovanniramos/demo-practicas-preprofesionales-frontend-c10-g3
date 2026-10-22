@@ -142,6 +142,14 @@ export function hidePasswordField(): boolean {
   return clickButtonNamed('ocultar contraseña')
 }
 
+/**
+ * Pasa de página con los botones "Página siguiente" o "Página anterior" de la paginación. Si el botón
+ * está deshabilitado (primera o última página) o la lista no tiene paginación, devuelve false.
+ */
+export function stepPage(delta: 1 | -1): boolean {
+  return clickButtonNamed(delta === 1 ? 'pagina siguiente' : 'pagina anterior')
+}
+
 /** Escribe en el buscador de la pantalla y lo enfoca. */
 export function searchFor(text: string): boolean {
   const field = document.querySelector<HTMLInputElement>('[data-shortcut-search]')

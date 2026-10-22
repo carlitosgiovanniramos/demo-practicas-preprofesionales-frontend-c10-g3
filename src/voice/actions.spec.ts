@@ -9,6 +9,7 @@ import {
   fillField,
   nextField,
   searchFor,
+  stepPage,
   submitForm,
   writeText,
 } from './actions'
@@ -19,6 +20,41 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.innerHTML = ''
+})
+
+describe('stepPage', () => {
+  it('pulsa el botón Página siguiente de la paginación', () => {
+    document.body.innerHTML = `
+      <nav><button aria-label="Página anterior">Anterior</button><button aria-label="Página siguiente">Siguiente</button></nav>`
+    const next = document.querySelectorAll('button')[1]
+    const onClick = vi.fn()
+    next.addEventListener('click', onClick)
+
+    expect(stepPage(1)).toBe(true)
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('pulsa Página anterior al retroceder', () => {
+    document.body.innerHTML = `
+      <nav><button aria-label="Página anterior">Anterior</button><button aria-label="Página siguiente">Siguiente</button></nav>`
+    const previous = document.querySelector<HTMLButtonElement>('button')!
+    const onClick = vi.fn()
+    previous.addEventListener('click', onClick)
+
+    expect(stepPage(-1)).toBe(true)
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('no avanza si ya está en la última página', () => {
+    document.body.innerHTML = `
+      <nav><button aria-label="Página siguiente" disabled>Siguiente</button></nav>`
+
+    expect(stepPage(1)).toBe(false)
+  })
+
+  it('devuelve false si la pantalla no tiene paginación', () => {
+    expect(stepPage(1)).toBe(false)
+  })
 })
 
 describe('searchFor', () => {
