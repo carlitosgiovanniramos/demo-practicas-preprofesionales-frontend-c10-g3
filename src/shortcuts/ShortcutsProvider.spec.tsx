@@ -141,6 +141,34 @@ describe('focus after the shortcuts list', () => {
   })
 })
 
+describe('voice shortcut inside forms', () => {
+  it('Alt+V activa el micrófono aunque el foco esté en un campo de texto', () => {
+    const onToggle = vi.fn()
+    window.addEventListener(VOICE_TOGGLE_EVENT, onToggle)
+    renderApp()
+    const name = screen.getByLabelText('Nombre')
+    name.focus()
+
+    fireEvent.keyDown(name, { key: 'v', altKey: true })
+
+    expect(onToggle).toHaveBeenCalledOnce()
+    window.removeEventListener(VOICE_TOGGLE_EVENT, onToggle)
+  })
+
+  it('una "v" escrita dentro de un campo no activa el micrófono', () => {
+    const onToggle = vi.fn()
+    window.addEventListener(VOICE_TOGGLE_EVENT, onToggle)
+    renderApp()
+    const name = screen.getByLabelText('Nombre')
+    name.focus()
+
+    fireEvent.keyDown(name, { key: 'v' })
+
+    expect(onToggle).not.toHaveBeenCalled()
+    window.removeEventListener(VOICE_TOGGLE_EVENT, onToggle)
+  })
+})
+
 describe('voice shortcut', () => {
   it('"v" pide activar o desactivar el micrófono, para usarlo con una sola mano', () => {
     const onToggle = vi.fn()

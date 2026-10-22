@@ -39,7 +39,7 @@ const BASE_ACTIONS: ShortcutAction[] = [
   { id: 'search', label: 'Ir al buscador de la pantalla', group: 'Acciones', defaultKeys: '/' },
   { id: 'help', label: 'Mostrar esta lista de atajos', group: 'Ayuda', defaultKeys: '?' },
   // Con una sola mano: V activa o apaga el micrófono sin llegar al ratón.
-  { id: 'voice', label: 'Activar o apagar el micrófono (comandos de voz)', group: 'Acciones', defaultKeys: 'v' },
+  { id: 'voice', label: 'Activar o apagar el micrófono (dentro de campos: Alt+V)', group: 'Acciones', defaultKeys: 'v' },
 ]
 
 /**
